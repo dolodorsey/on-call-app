@@ -46,9 +46,9 @@ const MISSIONS_HISTORY = [
 ];
 
 const CITIZEN_HISTORY = [
-  {service:'Deep Clean',hero:'Maria G.',date:'Today, 2:15 PM',cost:85,status:'Completed'},
-  {service:'Plumbing',hero:'Carlos R.',date:'Jan 15, 9:30 AM',cost:95,status:'Completed'},
-  {service:'Handyman',hero:'Alex T.',date:'Dec 28, 7:45 PM',cost:65,status:'Completed'},
+  {service:'Deep Clean',provider:'Maria G.',date:'Today, 2:15 PM',cost:85,status:'Completed'},
+  {service:'Plumbing',provider:'Carlos R.',date:'Jan 15, 9:30 AM',cost:95,status:'Completed'},
+  {service:'Handyman',provider:'Alex T.',date:'Dec 28, 7:45 PM',cost:65,status:'Completed'},
 ];
 
 /* ─── validation helpers ─── */
@@ -335,7 +335,7 @@ const Landing = ({onGetHelp,onProviderPortal}) => {
                 <span style={{fontSize:13,color:C.gray}}>{f}</span>
               </div>
             ))}
-            <button style={{...btn(p.popular?`linear-gradient(135deg, ${C.primary}, ${C.teal})`:C.card2,p.popular?C.white:C.text,{width:'100%',marginTop:12,border:p.popular?'none':`1px solid ${C.border}`})}}>
+            <button onClick={onGetHelp} style={{...btn(p.popular?`linear-gradient(135deg, ${C.primary}, ${C.teal})`:C.card2,p.popular?C.white:C.text,{width:'100%',marginTop:12,border:p.popular?'none':`1px solid ${C.border}`})}}>
               {p.price==='$0'?'Get Started Free':'Subscribe Now'}
             </button>
           </div>
@@ -654,7 +654,7 @@ const CitizenApp = ({userName,onBack}) => {
             })}
           </div>
           {selectedSvc && (
-            <button onClick={()=>onDispatch(selectedSvc)} className="anim-pop"
+            <button onClick={()=>onDispatch(cat.services.find(s2=>s2.name===selectedSvc)||{name:selectedSvc,price:'$0',eta:'30 min'})} className="anim-pop"
               style={{...btn(`linear-gradient(135deg, ${C.primary}, ${C.teal})`,C.white,{width:'100%',marginTop:20,padding:'16px 28px',fontSize:15,letterSpacing:0.5,borderRadius:16,boxShadow:`0 8px 30px ${C.primary}25`})}}>
               📲 BOOK NOW
             </button>
@@ -747,7 +747,7 @@ const CitizenApp = ({userName,onBack}) => {
               <div key={i} style={{...flex('row','center','space-between'),padding:'12px 0',borderBottom:i<CITIZEN_HISTORY.length-1?`1px solid ${C.border}`:'none'}}>
                 <div>
                   <div style={{fontSize:14,fontWeight:600,color:C.text}}>{h.service}</div>
-                  <div style={{fontSize:11,color:C.muted}}>{h.hero} · {h.date}</div>
+                  <div style={{fontSize:11,color:C.muted}}>{h.provider} · {h.date}</div>
                 </div>
                 <div style={{fontSize:14,fontWeight:700,color:C.text}}>${h.cost}</div>
               </div>
@@ -757,7 +757,7 @@ const CitizenApp = ({userName,onBack}) => {
       )}
 
       {tab==='services'&&(
-        <ServicesScreen onDispatch={(svcName)=>startRequest({name:svcName,emoji:'📲',price:0,eta:''})} />
+        <ServicesScreen onDispatch={(svc)=>startRequest({name:svc.name,emoji:'📲',price:typeof svc.price==='string'?parseInt(svc.price.replace(/[^0-9]/g,''))||0:svc.price,eta:svc.eta||'30 min'})} />
       )}
 
       {tab==='history'&&(
@@ -767,7 +767,7 @@ const CitizenApp = ({userName,onBack}) => {
             <div key={i} style={{...cardStyle,...flex('row','center','space-between'),marginBottom:12}}>
               <div>
                 <div style={{fontSize:15,fontWeight:700,color:C.text}}>{h.service}</div>
-                <div style={{fontSize:12,color:C.muted}}>{h.hero} · {h.date}</div>
+                <div style={{fontSize:12,color:C.muted}}>{h.provider} · {h.date}</div>
                 <div style={{fontSize:11,color:C.green,marginTop:4}}>✓ {h.status}</div>
               </div>
               <div style={{fontSize:18,fontWeight:800,color:C.text}}>${h.cost}</div>
