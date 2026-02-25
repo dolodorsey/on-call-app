@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { supabase, signUp, signIn, signOut, getSession, createBooking, getBookings } from './supabase';
 
 /* ─── ON CALL Light Palette ─── */
 const C = {
@@ -73,11 +74,39 @@ const App = () => {
   const [screen, setScreen] = useState('landing');
   const [fade, setFade] = useState(true);
   const [userName, setUserName] = useState('');
+  const [userId, setUserId] = useState('');
+
+  // Check for existing session on mount
+  useEffect(() => {
+    getSession().then(session => {
+      if (session?.user) {
+        const name = session.user.user_metadata?.full_name || session.user.email?.split('@')[0] || 'User';
+        const role = session.user.user_metadata?.role || 'customer';
+        setUserName(name);
+        setUserId(session.user.id);
+        setScreen(role === 'provider' ? 'hero' : 'citizen');
+      }
+    });
+    // Listen for auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'SIGNED_OUT') {
+        setScreen('landing');
+        setUserName('');
+        setUserId('');
+      }
+    });
+    return () => subscription.unsubscribe();
+  }, []);
 
   const navigate = useCallback((s) => {
     setFade(false);
     setTimeout(()=>{setScreen(s);setFade(true);window.scrollTo(0,0);},200);
   },[]);
+
+  const handleSignOut = async () => {
+    await signOut();
+    navigate('landing');
+  };
 
   const wrapper = {
     maxWidth:430,margin:'0 auto',minHeight:'100dvh',background:C.bg,
@@ -106,10 +135,10 @@ const App = () => {
       `}</style>
       <div style={wrapper}>
         {screen==='landing' && <Landing onGetHelp={()=>navigate('auth-citizen')} onProviderPortal={()=>navigate('auth-hero')}/>}
-        {screen==='auth-citizen' && <AuthScreen role="citizen" onBack={()=>navigate('landing')} onLogin={(n)=>{setUserName(n);navigate('citizen');}}/>}
-        {screen==='auth-hero' && <AuthScreen role="hero" onBack={()=>navigate('landing')} onLogin={(n)=>{setUserName(n);navigate('hero');}}/>}
-        {screen==='citizen' && <CitizenApp userName={userName} onBack={()=>navigate('landing')}/>}
-        {screen==='hero' && <ProviderDashboard userName={userName} onBack={()=>navigate('landing')}/>}
+        {screen==='auth-citizen' && <AuthScreen role="citizen" onBack={()=>navigate('landing')} onLogin={(n,id)=>{setUserName(n);setUserId(id);navigate('citizen');}}/>}
+        {screen==='auth-hero' && <AuthScreen role="hero" onBack={()=>navigate('landing')} onLogin={(n,id)=>{setUserName(n);setUserId(id);navigate('hero');}}/>}
+        {screen==='citizen' && <CitizenApp userName={userName} userId={userId} onBack={handleSignOut}/>}
+        {screen==='hero' && <ProviderDashboard userName={userName} userId={userId} onBack={handleSignOut}/>}
       </div>
     </>
   );
@@ -124,6 +153,8 @@ const AuthScreen = ({role,onBack,onLogin}) => {
   const [password,setPassword]=useState('');
   const [name,setName]=useState('');
   const [touched,setTouched]=useState({});
+  const [loading,setLoading]=useState(false);
+  const [authError,setAuthError]=useState('');
 
   const isCitizen=role==='citizen';
   const accent=isCitizen?C.primary:C.green;
@@ -137,10 +168,32 @@ const AuthScreen = ({role,onBack,onLogin}) => {
   const pwInfo = password.length>0 ? passwordStrength(password) : null;
   const isValid = isValidEmail(email) && password.length>=8 && (mode==='signin' || name.trim().length>=2);
 
-  const handleSubmit = () => {
-    if(!isValid) return;
-    const displayName = mode==='signup' ? name.trim() : email.split('@')[0];
-    onLogin(displayName);
+  const handleSubmit = async () => {
+    if(!isValid || loading) return;
+    setLoading(true);
+    setAuthError('');
+    try {
+      if (mode === 'signup') {
+        const supaRole = isCitizen ? 'customer' : 'provider';
+        await signUp(email, password, name.trim(), supaRole);
+        // Auto sign-in after signup (Supabase sends confirmation email but we proceed)
+        const data = await signIn(email, password);
+        const displayName = name.trim() || email.split('@')[0];
+        onLogin(displayName, data.user?.id || '');
+      } else {
+        const data = await signIn(email, password);
+        const displayName = data.user?.user_metadata?.full_name || email.split('@')[0];
+        onLogin(displayName, data.user?.id || '');
+      }
+    } catch (err: any) {
+      let msg = err.message || 'Authentication failed';
+      if (msg.includes('Invalid login')) msg = 'Invalid email or password';
+      if (msg.includes('already registered')) msg = 'This email is already registered. Try signing in.';
+      if (msg.includes('Email not confirmed')) msg = 'Check your email to confirm your account, then sign in.';
+      setAuthError(msg);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -189,8 +242,14 @@ const AuthScreen = ({role,onBack,onLogin}) => {
           )}
           {!pwInfo && <div style={{height:16,marginBottom:8}}/>}
 
-          <button onClick={handleSubmit} disabled={!isValid} style={{...btn(accent),width:'100%',fontSize:16,marginBottom:16,opacity:isValid?1:0.4,cursor:isValid?'pointer':'not-allowed'}}>
-            {mode==='signin'?'Sign In':'Create Account'}
+          {authError && (
+            <div style={{padding:'12px 16px',background:`${C.red}10`,border:`1px solid ${C.red}30`,borderRadius:12,marginBottom:16}}>
+              <div style={{fontSize:13,color:C.red,fontWeight:600}}>{authError}</div>
+            </div>
+          )}
+
+          <button onClick={handleSubmit} disabled={!isValid||loading} style={{...btn(accent),width:'100%',fontSize:16,marginBottom:16,opacity:(isValid&&!loading)?1:0.4,cursor:(isValid&&!loading)?'pointer':'not-allowed'}}>
+            {loading ? '...' : (mode==='signin'?'Sign In':'Create Account')}
           </button>
 
           {mode==='signin'&&(
@@ -205,7 +264,7 @@ const AuthScreen = ({role,onBack,onLogin}) => {
         </div>
         <div style={{...flex('row','center','center',12),width:'100%',maxWidth:360}}>
           {['Google','Apple'].map(provider=>(
-            <button key={provider} onClick={()=>onLogin(provider+' User')} style={{flex:1,padding:'12px 0',background:C.card,border:`1px solid ${C.border}`,borderRadius:12,color:C.text,fontSize:14,fontWeight:600,cursor:'pointer',boxShadow:'0 1px 3px rgba(0,0,0,0.04)'}}>
+            <button key={provider} onClick={()=>onLogin(provider+' User','')} style={{flex:1,padding:'12px 0',background:C.card,border:`1px solid ${C.border}`,borderRadius:12,color:C.text,fontSize:14,fontWeight:600,cursor:'pointer',boxShadow:'0 1px 3px rgba(0,0,0,0.04)'}}>
               {provider==='Google'?'🔵':'🍎'} {provider}
             </button>
           ))}
@@ -389,12 +448,22 @@ const Landing = ({onGetHelp,onProviderPortal}) => {
 /* ════════════════════════════════════════ */
 /*             CITIZEN APP                 */
 /* ════════════════════════════════════════ */
-const CitizenApp = ({userName,onBack}) => {
+const CitizenApp = ({userName,userId,onBack}) => {
   const [tab,setTab]=useState('home');
   const [selectedService,setSelectedService]=useState(null);
   const [reqStep,setReqStep]=useState(null);
   const [eta,setEta]=useState(1800);
   const [notifOpen,setNotifOpen]=useState(false);
+  const [bookingHistory,setBookingHistory]=useState([]);
+
+  // Load real booking history
+  useEffect(()=>{
+    if(userId) {
+      getBookings(userId).then(data=>{
+        if(data.length>0) setBookingHistory(data);
+      }).catch(()=>{});
+    }
+  },[userId]);
 
   useEffect(()=>{
     if(reqStep!=='tracking') return;
@@ -409,6 +478,19 @@ const CitizenApp = ({userName,onBack}) => {
 
   const dispatchProvider=()=>{
     setReqStep('finding');
+    // Create real booking in Supabase + fire n8n webhook
+    if(userId && selectedService) {
+      createBooking({
+        customer_id: userId,
+        service_name: selectedService.name,
+        category_name: selectedService.category || 'Home Services',
+        address: 'GPS Location',
+        total_price: selectedService.price || 0,
+      }).then(()=>{
+        // Refresh history
+        getBookings(userId).then(data=>{if(data.length>0) setBookingHistory(data);}).catch(()=>{});
+      }).catch(()=>{});
+    }
     setTimeout(()=>setReqStep('found'),3000);
   };
 
@@ -834,7 +916,7 @@ const CitizenApp = ({userName,onBack}) => {
 /* ════════════════════════════════════════ */
 /*           PROVIDER DASHBOARD            */
 /* ════════════════════════════════════════ */
-const ProviderDashboard = ({userName,onBack}) => {
+const ProviderDashboard = ({userName,userId,onBack}) => {
   const [tab,setTab]=useState('dashboard');
   const [onDuty,setOnDuty]=useState(false);
   const [showAlert,setShowAlert]=useState(false);
