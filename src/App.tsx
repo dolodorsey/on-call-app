@@ -470,6 +470,7 @@ const Landing = ({onGetHelp,onProviderPortal}) => {
 /* ════════════════════════════════════════ */
 const CitizenApp = ({userName,userId,onBack}) => {
   const [tab,setTab]=useState('home');
+  const [legalView,setLegalView]=useState<string|null>(null);
   const [selectedService,setSelectedService]=useState(null);
   const [reqStep,setReqStep]=useState(null);
   const [eta,setEta]=useState(1800);
@@ -924,13 +925,15 @@ const CitizenApp = ({userName,userId,onBack}) => {
             </div>
           ))}
           <div style={{display:'flex',justifyContent:'center',gap:16,marginTop:16}}>
-            <button onClick={()=>window.open('https://thekollectivehospitalitygroup.com/terms','_blank')} style={{background:'none',border:'none',color:C.muted,fontSize:11,cursor:'pointer',textDecoration:'underline'}}>Terms of Service</button>
-            <button onClick={()=>window.open('https://thekollectivehospitalitygroup.com/privacy','_blank')} style={{background:'none',border:'none',color:C.muted,fontSize:11,cursor:'pointer',textDecoration:'underline'}}>Privacy Policy</button>
+            <button onClick={()=>setLegalView('terms')} style={{background:'none',border:'none',color:C.muted,fontSize:11,cursor:'pointer',textDecoration:'underline'}}>Terms of Service</button>
+            <button onClick={()=>setLegalView('privacy')} style={{background:'none',border:'none',color:C.muted,fontSize:11,cursor:'pointer',textDecoration:'underline'}}>Privacy Policy</button>
           </div>
           <button onClick={onBack} style={{...btn('transparent',C.red,{border:'none',marginTop:8})}}>Sign Out</button>
         </div>
       )}
 
+      {/* Legal Modal */}
+      {legalView&&<div style={{position:"fixed",inset:0,zIndex:200,background:"rgba(248,249,252,0.97)",overflowY:"auto",padding:"50px 16px 40px"}} onClick={()=>setLegalView(null)}><div onClick={(e:any)=>e.stopPropagation()} style={{maxWidth:420,margin:"0 auto",background:"#fff",borderRadius:20,padding:"20px 16px",border:"1px solid #e5e7eb",boxShadow:"0 8px 32px rgba(0,0,0,0.1)"}}><div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}><div style={{fontWeight:800,fontSize:17}}>{"terms"===legalView?"Terms of Service":"Privacy Policy"}</div><button onClick={()=>setLegalView(null)} style={{background:"none",border:"none",color:"#94a3b8",fontSize:18,cursor:"pointer"}}>✕</button></div><div style={{fontSize:11,color:"#64748b",lineHeight:1.8,whiteSpace:"pre-wrap"}}>{"terms"===legalView?"TERMS OF SERVICE — The Kollective Hospitality Group\nLast Updated: April 2, 2026\n\n1. ACCEPTANCE\nBy using On Call, you agree to these Terms.\n\n2. ELIGIBILITY\nMust be 18+.\n\n3. SERVICES\nOn Call connects customers with independent service providers.\n\n4. PAYMENTS\nNon-refundable except as required by law.\n\n5. DISCLAIMER\nKHG is a platform. Not liable for third-party services.\n\n6. GOVERNING LAW\nGeorgia, United States.\n\n7. CONTACT\nthedoctordorsey@gmail.com":"PRIVACY POLICY — The Kollective Hospitality Group\nLast Updated: April 2, 2026\n\n1. WE COLLECT\nAccount info, location, payment info.\n\n2. WE USE IT FOR\nServices, matching, payments, improvement.\n\n3. SHARING\nDo not sell. Share with providers for service and law enforcement when required.\n\n4. SECURITY\nEncryption, secure storage, access controls.\n\n5. YOUR RIGHTS\nAccess, correct, delete your data.\n\n6. CONTACT\nthedoctordorsey@gmail.com"}</div></div></div>}
       {/* Bottom Nav */}
       <div style={{position:'fixed',bottom:0,left:'50%',transform:'translateX(-50%)',width:'100%',maxWidth:430,background:C.card,borderTop:`1px solid ${C.border}`,padding:'8px 0 env(safe-area-inset-bottom,8px)',...flex('row','center','space-around'),zIndex:40}}>
         {[['home','🏠','Home'],['services','📋','Services'],['history','📂','History'],['wallet','💳','Wallet'],['profile','👤','Profile']].map(([id,ic,label])=>(
@@ -949,6 +952,7 @@ const CitizenApp = ({userName,userId,onBack}) => {
 /* ════════════════════════════════════════ */
 const ProviderDashboard = ({userName,userId,onBack}) => {
   const [tab,setTab]=useState('dashboard');
+  const [legalView,setLegalView]=useState<string|null>(null);
   const [onDuty,setOnDuty]=useState(false);
   const [showAlert,setShowAlert]=useState(false);
   const [alertTimer,setAlertTimer]=useState(15);
@@ -1123,8 +1127,8 @@ const ProviderDashboard = ({userName,userId,onBack}) => {
             </div>
           ))}
           <div style={{display:'flex',justifyContent:'center',gap:16,marginTop:16}}>
-            <button onClick={()=>window.open('https://thekollectivehospitalitygroup.com/terms','_blank')} style={{background:'none',border:'none',color:C.muted,fontSize:11,cursor:'pointer',textDecoration:'underline'}}>Terms of Service</button>
-            <button onClick={()=>window.open('https://thekollectivehospitalitygroup.com/privacy','_blank')} style={{background:'none',border:'none',color:C.muted,fontSize:11,cursor:'pointer',textDecoration:'underline'}}>Privacy Policy</button>
+            <button onClick={()=>setLegalView('terms')} style={{background:'none',border:'none',color:C.muted,fontSize:11,cursor:'pointer',textDecoration:'underline'}}>Terms of Service</button>
+            <button onClick={()=>setLegalView('privacy')} style={{background:'none',border:'none',color:C.muted,fontSize:11,cursor:'pointer',textDecoration:'underline'}}>Privacy Policy</button>
           </div>
           <button onClick={onBack} style={{...btn('transparent',C.red,{border:'none',marginTop:8})}}>Sign Out</button>
         </div>
