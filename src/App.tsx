@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { supabase, signUp, signIn, signOut, getSession, createBooking, getBookings, resetPassword } from './supabase';
 
+// Haptic feedback for native iOS
+const tap=async(style='Medium')=>{try{const{Haptics,ImpactStyle}=await import('@capacitor/haptics');await Haptics.impact({style:ImpactStyle[style]||ImpactStyle.Medium});}catch{}};
 /* ─── ON CALL Light Palette ─── */
 const C = {
   bg: '#f8f9fc', card: '#ffffff', card2: '#f1f3f8', primary: '#1a6bff', primaryDark: '#0a4fd4',
@@ -497,11 +499,12 @@ const CitizenApp = ({userName,userId,onBack}) => {
   },[reqStep]);
 
   const startRequest=(svc)=>{
+    tap();
     setSelectedService(svc);
     setReqStep('confirm');
   };
 
-  const dispatchProvider=async()=>{
+  const dispatchProvider=async()=>{tap('Heavy');
     setReqStep('finding');
     // Get real GPS location
     let address='GPS Location';
