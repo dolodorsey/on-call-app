@@ -54,6 +54,11 @@ export const getSession = async () => {
   return session;
 };
 
+export const resetPassword = async (email: string) => {
+  const { error } = await supabase.auth.resetPasswordForEmail(email);
+  if (error) throw error;
+};
+
 // ── Booking helpers ──
 
 // Lookup oc_users.id from auth.users.id (auth_id)

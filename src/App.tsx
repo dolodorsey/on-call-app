@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { supabase, signUp, signIn, signOut, getSession, createBooking, getBookings } from './supabase';
+import { supabase, signUp, signIn, signOut, getSession, createBooking, getBookings, resetPassword } from './supabase';
 
 /* ─── ON CALL Light Palette ─── */
 const C = {
@@ -66,6 +66,22 @@ const passwordStrength = (p) => {
   if(score===3) return {label:'Good',color:C.primary,pct:80};
   return {label:'Strong',color:C.green,pct:100};
 };
+
+/* ════════════════════════════════════════ */
+/*           ERROR BOUNDARY                */
+/* ════════════════════════════════════════ */
+class OCErrorBoundary extends React.Component<{children:React.ReactNode},{hasError:boolean}>{
+  constructor(p:any){super(p);this.state={hasError:false};}
+  static getDerivedStateFromError(){return{hasError:true};}
+  render(){
+    if(this.state.hasError)return React.createElement('div',{style:{minHeight:'100vh',background:'#f8f9fc',display:'flex',flexDirection:'column' as const,alignItems:'center',justifyContent:'center',fontFamily:"'DM Sans',sans-serif",color:'#0f172a',padding:24,textAlign:'center' as const}},
+      React.createElement('div',{style:{fontSize:40,marginBottom:16}},'\u26A0\uFE0F'),
+      React.createElement('h2',{style:{fontSize:20,fontWeight:700,marginBottom:8}},'Something went wrong'),
+      React.createElement('button',{onClick:()=>{this.setState({hasError:false});window.location.reload()},style:{background:'#1a6bff',color:'#fff',border:'none',borderRadius:14,padding:'14px 32px',fontSize:16,fontWeight:700,cursor:'pointer'}},'Reload App')
+    );
+    return this.props.children;
+  }
+}
 
 /* ════════════════════════════════════════ */
 /*               MAIN APP                  */
@@ -253,7 +269,11 @@ const AuthScreen = ({role,onBack,onLogin}) => {
           </button>
 
           {mode==='signin'&&(
-            <button style={{background:'none',border:'none',color:accent,fontSize:13,cursor:'pointer',width:'100%',textAlign:'center',fontWeight:600}}>Forgot Password?</button>
+            <button onClick={async()=>{
+              if(!email.trim()){setError('Enter your email first');return;}
+              try{await resetPassword(email);setError('');alert('Password reset email sent to '+email);}
+              catch(e:any){setError(e.message||'Failed to send reset email');}
+            }} style={{background:'none',border:'none',color:accent,fontSize:13,cursor:'pointer',width:'100%',textAlign:'center',fontWeight:600}}>Forgot Password?</button>
           )}
         </div>
 
@@ -476,18 +496,25 @@ const CitizenApp = ({userName,userId,onBack}) => {
     setReqStep('confirm');
   };
 
-  const dispatchProvider=()=>{
+  const dispatchProvider=async()=>{
     setReqStep('finding');
+    // Get real GPS location
+    let address='GPS Location';
+    try{
+      if(navigator.geolocation){
+        const pos:GeolocationPosition=await new Promise((res,rej)=>navigator.geolocation.getCurrentPosition(res,rej,{timeout:8000}));
+        address=`${pos.coords.latitude.toFixed(4)}, ${pos.coords.longitude.toFixed(4)}`;
+      }
+    }catch{}
     // Create real booking in Supabase + fire n8n webhook
     if(userId && selectedService) {
       createBooking({
         customer_id: userId,
         service_name: selectedService.name,
         category_name: selectedService.category || 'Home Services',
-        address: 'GPS Location',
+        address,
         total_price: selectedService.price || 0,
       }).then(()=>{
-        // Refresh history
         getBookings(userId).then(data=>{if(data.length>0) setBookingHistory(data);}).catch(()=>{});
       }).catch(()=>{});
     }
@@ -1108,4 +1135,5 @@ const ProviderDashboard = ({userName,userId,onBack}) => {
   );
 };
 
-export default App;
+const AppWithErrorBoundary = () => React.createElement(OCErrorBoundary, null, React.createElement(App));
+export default AppWithErrorBoundary;
