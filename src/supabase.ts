@@ -6,7 +6,7 @@ const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIU
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 // n8n webhook base URL
-const N8N_BASE = 'https://drdorsey.app.n8n.cloud/webhook';
+const N8N_BASE = 'https://dorsey.app.n8n.cloud/webhook';
 
 // ── Auth helpers ──
 export const signUp = async (email: string, password: string, fullName: string, role: 'customer' | 'provider') => {
