@@ -923,7 +923,11 @@ const CitizenApp = ({userName,userId,onBack}) => {
               <span style={{color:C.muted}}>→</span>
             </div>
           ))}
-          <button onClick={onBack} style={{...btn('transparent',C.red,{border:'none',marginTop:16})}}>Sign Out</button>
+          <div style={{display:'flex',justifyContent:'center',gap:16,marginTop:16}}>
+            <button onClick={()=>window.open('https://thekollectivehospitalitygroup.com/terms','_blank')} style={{background:'none',border:'none',color:C.muted,fontSize:11,cursor:'pointer',textDecoration:'underline'}}>Terms of Service</button>
+            <button onClick={()=>window.open('https://thekollectivehospitalitygroup.com/privacy','_blank')} style={{background:'none',border:'none',color:C.muted,fontSize:11,cursor:'pointer',textDecoration:'underline'}}>Privacy Policy</button>
+          </div>
+          <button onClick={onBack} style={{...btn('transparent',C.red,{border:'none',marginTop:8})}}>Sign Out</button>
         </div>
       )}
 
@@ -1118,7 +1122,11 @@ const ProviderDashboard = ({userName,userId,onBack}) => {
               <span style={{color:C.muted}}>→</span>
             </div>
           ))}
-          <button onClick={onBack} style={{...btn('transparent',C.red,{border:'none',marginTop:16})}}>Sign Out</button>
+          <div style={{display:'flex',justifyContent:'center',gap:16,marginTop:16}}>
+            <button onClick={()=>window.open('https://thekollectivehospitalitygroup.com/terms','_blank')} style={{background:'none',border:'none',color:C.muted,fontSize:11,cursor:'pointer',textDecoration:'underline'}}>Terms of Service</button>
+            <button onClick={()=>window.open('https://thekollectivehospitalitygroup.com/privacy','_blank')} style={{background:'none',border:'none',color:C.muted,fontSize:11,cursor:'pointer',textDecoration:'underline'}}>Privacy Policy</button>
+          </div>
+          <button onClick={onBack} style={{...btn('transparent',C.red,{border:'none',marginTop:8})}}>Sign Out</button>
         </div>
       )}
 
