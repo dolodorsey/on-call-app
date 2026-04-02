@@ -91,6 +91,9 @@ const App = () => {
   const [fade, setFade] = useState(true);
   const [userName, setUserName] = useState('');
   const [userId, setUserId] = useState('');
+  const [isOffline, setIsOffline] = useState(!navigator.onLine);
+
+  useEffect(()=>{const on=()=>setIsOffline(false);const off=()=>setIsOffline(true);window.addEventListener('online',on);window.addEventListener('offline',off);return()=>{window.removeEventListener('online',on);window.removeEventListener('offline',off)}},[]);
 
   // Check for existing session on mount
   useEffect(() => {
@@ -150,6 +153,7 @@ const App = () => {
         *{box-sizing:border-box}
       `}</style>
       <div style={wrapper}>
+        {isOffline&&<div style={{position:'fixed',top:0,left:0,right:0,zIndex:200,background:'#ef4444',color:'#fff',textAlign:'center',padding:'6px',fontSize:11,fontWeight:700}}>No internet connection</div>}
         {screen==='landing' && <Landing onGetHelp={()=>navigate('auth-citizen')} onProviderPortal={()=>navigate('auth-hero')}/>}
         {screen==='auth-citizen' && <AuthScreen role="citizen" onBack={()=>navigate('landing')} onLogin={(n,id)=>{setUserName(n);setUserId(id);navigate('citizen');}}/>}
         {screen==='auth-hero' && <AuthScreen role="hero" onBack={()=>navigate('landing')} onLogin={(n,id)=>{setUserName(n);setUserId(id);navigate('hero');}}/>}
