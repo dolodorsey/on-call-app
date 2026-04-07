@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import ProviderApply from '../components/ProviderApply';
 import { supabase, signUp, signIn, signOut, getSession, createBooking, getBookings, resetPassword } from './supabase';
 
 // Haptic feedback for native iOS
@@ -135,6 +136,8 @@ const App = () => {
     color:C.text,position:'relative',overflow:'hidden',
     opacity:fade?1:0,transition:'opacity .2s',
   };
+
+  if (typeof window !== "undefined" && window.location.pathname === "/apply") return <ProviderApply />;
 
   return (
     <>
