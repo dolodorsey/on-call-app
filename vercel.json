@@ -1,0 +1,1 @@
+{"rewrites":[{"source":"/((?!api|assets|favicon|manifest).*)", "destination":"/index.html"}]}
