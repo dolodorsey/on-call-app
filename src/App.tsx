@@ -30,16 +30,10 @@ const SERVICES = [
   {name:'Private Chef',emoji:'👨‍🍳',price:150,eta:'60 min'},
 ];
 
-const PLANS = [
-  {name:'Basic',price:'$0',period:'forever',features:['Pay-as-you-go pricing','Standard response time','Basic GPS tracking','Email support'],popular:false},
-  {name:'ON CALL+',price:'$9.99',period:'/month',features:['15% off all services','Priority matching','Live GPS tracking','24/7 support line','1 free cleaning/month'],popular:true},
-  {name:'ON CALL Pro',price:'$19.99',period:'/month',features:['25% off all services','VIP priority matching','Live GPS + ETA alerts','24/7 concierge line','2 free cleanings/month','Family coverage (up to 4)','Dedicated account manager'],popular:false},
-];
-
 const REVIEWS = [
-  {text:'ON CALL sent a cleaning team 40 minutes before our guests arrived. The house was spotless. This app is a lifesaver.',name:'Danielle R.',plan:'ON CALL+ Member',stars:5},
-  {text:'I use ON CALL for everything now. Plumber last week, private chef this weekend. One app for all of it.',name:'Marcus T.',plan:'Pro Member',stars:5},
-  {text:'The handyman was professional, on time, and fixed everything in one visit. Finally a platform I can trust.',name:'Angela W.',plan:'ON CALL+',stars:5},
+  {text:'ON CALL sent a cleaning team 40 minutes before our guests arrived. The house was spotless. This app is a lifesaver.',name:'Danielle R.',plan:'Verified Member',stars:5},
+  {text:'I use ON CALL for everything now. Plumber last week, private chef this weekend. One app for all of it.',name:'Marcus T.',plan:'Active Member',stars:5},
+  {text:'The handyman was professional, on time, and fixed everything in one visit. Finally a platform I can trust.',name:'Angela W.',plan:'Community Member',stars:5},
 ];
 
 const MISSIONS_HISTORY = [
@@ -403,31 +397,6 @@ const Landing = ({onGetHelp,onProviderPortal}) => {
             </div>
           ))}
         </div>
-      </section>
-
-      {/* PLANS */}
-      <section style={{padding:'48px 24px',borderTop:`1px solid ${C.border}`}}>
-        <h2 style={{fontSize:24,fontWeight:800,textAlign:'center',color:C.text,margin:'0 0 8px'}}>Choose Your Plan</h2>
-        <p style={{textAlign:'center',color:C.muted,fontSize:14,margin:'0 0 32px'}}>Save more with a membership</p>
-        {PLANS.map(p=>(
-          <div key={p.name} style={{...cardStyle,marginBottom:16,border:`1px solid ${p.popular?C.primary:C.border}`,position:'relative',overflow:'hidden'}}>
-            {p.popular&&<div style={{position:'absolute',top:12,right:-30,background:`linear-gradient(135deg, ${C.primary}, ${C.teal})`,color:C.white,fontSize:10,fontWeight:800,padding:'4px 36px',transform:'rotate(45deg)',letterSpacing:1}}>POPULAR</div>}
-            <div style={{fontSize:18,fontWeight:800,color:C.text,marginBottom:4}}>{p.name}</div>
-            <div style={{...flex('row','baseline','flex-start',4),marginBottom:12}}>
-              <span style={{fontSize:32,fontWeight:900,color:p.popular?C.primary:C.text}}>{p.price}</span>
-              <span style={{fontSize:13,color:C.muted}}>{p.period}</span>
-            </div>
-            {p.features.map(f=>(
-              <div key={f} style={{...flex('row','center','flex-start',8),marginBottom:8}}>
-                <span style={{color:C.green,fontSize:14}}>✓</span>
-                <span style={{fontSize:13,color:C.gray}}>{f}</span>
-              </div>
-            ))}
-            <button onClick={onGetHelp} style={{...btn(p.popular?`linear-gradient(135deg, ${C.primary}, ${C.teal})`:C.card2,p.popular?C.white:C.text,{width:'100%',marginTop:12,border:p.popular?'none':`1px solid ${C.border}`})}}>
-              {p.price==='$0'?'Get Started Free':'Subscribe Now'}
-            </button>
-          </div>
-        ))}
       </section>
 
       {/* TESTIMONIALS */}
@@ -810,7 +779,7 @@ const CitizenApp = ({userName,userId,onBack}) => {
           <div style={{width:32,height:32,borderRadius:8,background:`linear-gradient(135deg, ${C.primary}, ${C.teal})`,...flex('row','center','center'),fontWeight:900,fontSize:9,color:C.white,letterSpacing:0.3}}>OC</div>
           <div>
             <div style={{fontSize:14,fontWeight:700,color:C.text}}>Hi, {userName || 'there'} 👋</div>
-            <div style={{fontSize:11,color:C.muted}}>Basic Member</div>
+            <div style={{fontSize:11,color:C.muted}}>Member</div>
           </div>
         </div>
         <button onClick={()=>setNotifOpen(!notifOpen)} style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:12,width:40,height:40,cursor:'pointer',...flex('row','center','center'),position:'relative',boxShadow:'0 1px 3px rgba(0,0,0,0.04)'}}>
@@ -822,7 +791,7 @@ const CitizenApp = ({userName,userId,onBack}) => {
       {notifOpen && (
         <div style={{margin:'0 20px 16px',padding:16,background:C.card,borderRadius:14,border:`1px solid ${C.border}`,boxShadow:'0 4px 12px rgba(0,0,0,0.06)'}}>
           <div style={{fontSize:13,fontWeight:700,color:C.text,marginBottom:12}}>Notifications</div>
-          {['🎉 Welcome to ON CALL! Your account is ready.','⭐ Upgrade to ON CALL+ for priority matching.'].map((n,i)=>(
+          {['🎉 Welcome to ON CALL! Your account is ready.','📍 Live notifications are enabled for your bookings.'].map((n,i)=>(
             <div key={i} style={{padding:'10px 0',borderBottom:i===0?`1px solid ${C.border}`:'none',fontSize:13,color:C.gray}}>{n}</div>
           ))}
         </div>
@@ -927,8 +896,8 @@ const CitizenApp = ({userName,userId,onBack}) => {
         <div className="anim-tab" style={{padding:20,...flex('column','center','center'),minHeight:'60vh'}}>
           <div style={{width:80,height:80,borderRadius:20,background:C.card2,...flex('row','center','center'),fontSize:36,marginBottom:16,border:`1px solid ${C.border}`}}>👤</div>
           <div style={{fontSize:18,fontWeight:700,color:C.text,marginBottom:4}}>{userName || 'User'}</div>
-          <div style={{fontSize:13,color:C.muted,marginBottom:24}}>Basic Member</div>
-          {['My Profile','ON CALL Plans','Payment Methods','Safety Settings','Help & Support'].map(item=>(
+          <div style={{fontSize:13,color:C.muted,marginBottom:24}}>Member</div>
+          {['My Profile','App Settings','Payment Methods','Safety Settings','Help & Support'].map(item=>(
             <div key={item} style={{...cardStyle,width:'100%',marginBottom:8,...flex('row','center','space-between'),padding:'16px 20px',cursor:'pointer'}}>
               <span style={{fontSize:14,color:C.text}}>{item}</span>
               <span style={{color:C.muted}}>→</span>
