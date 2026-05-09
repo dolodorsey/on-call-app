@@ -30,6 +30,8 @@ const SERVICES = [
   {name:'Private Chef',emoji:'👨‍🍳',price:150,eta:'60 min'},
 ];
 
+const ON_CALL_STRIPE_PAYMENT_URL = 'https://buy.stripe.com/28E28sgtt6kUcBWcq5dUY06';
+
 const REVIEWS = [
   {text:'ON CALL sent a cleaning team 40 minutes before our guests arrived. The house was spotless. This app is a lifesaver.',name:'Danielle R.',plan:'Verified Member',stars:5},
   {text:'I use ON CALL for everything now. Plumber last week, private chef this weekend. One app for all of it.',name:'Marcus T.',plan:'Active Member',stars:5},
@@ -62,6 +64,15 @@ const passwordStrength = (p) => {
   if(score===2) return {label:'Fair',color:C.yellow,pct:60};
   if(score===3) return {label:'Good',color:C.primary,pct:80};
   return {label:'Strong',color:C.green,pct:100};
+};
+
+const openPaymentUrl = async (url) => {
+  try {
+    const { Native } = await import('./native');
+    await Native.openUrl(url);
+  } catch {
+    window.open(url, '_blank');
+  }
 };
 
 /* ════════════════════════════════════════ */
@@ -858,6 +869,7 @@ const CitizenApp = ({userName,userId,onBack}) => {
                 <div style={{fontSize:15,fontWeight:700,color:C.text}}>{h.service}</div>
                 <div style={{fontSize:12,color:C.muted}}>{h.provider} · {h.date}</div>
                 <div style={{fontSize:11,color:C.green,marginTop:4}}>✓ {h.status}</div>
+                <button onClick={()=>openPaymentUrl(ON_CALL_STRIPE_PAYMENT_URL)} style={{...btn(C.card2,C.primary,{padding:'8px 12px',fontSize:11,fontWeight:700,marginTop:8,border:`1px solid ${C.border}`})}}>Pay with Card</button>
               </div>
               <div style={{fontSize:18,fontWeight:800,color:C.text}}>${h.cost}</div>
             </div>
@@ -888,6 +900,8 @@ const CitizenApp = ({userName,userId,onBack}) => {
                 <span style={{fontSize:13,fontWeight:700,color:C.text}}>${h.cost}</span>
               </div>
             ))}
+            <button onClick={()=>openPaymentUrl(ON_CALL_STRIPE_PAYMENT_URL)} style={{...btn(C.primary,'#fff',{width:'100%',marginTop:14,padding:'12px 16px',fontSize:13})}}>Open Stripe Payment</button>
+            <div style={{fontSize:11,color:C.muted,marginTop:8,lineHeight:1.5}}>Enter the agreed service amount in Stripe before completing payment.</div>
           </div>
         </div>
       )}
