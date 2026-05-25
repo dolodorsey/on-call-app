@@ -713,6 +713,15 @@ const CitizenApp = ({userName,userId,onBack}) => {
       {name:'Office Movers',description:'Furniture and equipment moving',price:'$120',eta:'Scheduled'},
       {name:'Corporate Concierge',description:'Full-service office packages',price:'Quote',eta:'Scheduled'},
     ]},
+    { id:'pet-care', name:'Pet Care', icon:'🐾', color:'#f97316', count:7, services:[
+      {name:'Pet Walking',description:'Professional daily dog walking',price:'$20',eta:'20-30 min'},
+      {name:'Pet Grooming',description:'Full grooming service at your door',price:'$65',eta:'60-90 min'},
+      {name:'Pet Sitting',description:'In-home overnight pet care',price:'$45',eta:'Scheduled'},
+      {name:'Vet Transport',description:'Safe rides to the vet and back',price:'$35',eta:'30-45 min'},
+      {name:'Pet Training',description:'In-home obedience and behavior training',price:'$75',eta:'60-90 min'},
+      {name:'Pet Boarding',description:'Trusted in-home boarding care',price:'$55',eta:'Scheduled'},
+      {name:'Aquarium & Exotic Care',description:'Specialized care for fish, reptiles, birds',price:'$50',eta:'45-60 min'},
+    ]},
   ];
 
   const ServicesScreen = ({onDispatch}) => {
@@ -766,7 +775,7 @@ const CitizenApp = ({userName,userId,onBack}) => {
     return (
       <div className="anim-tab" style={{padding:20}}>
         <h2 style={{fontSize:20,fontWeight:800,color:C.text,marginBottom:4}}>All Services</h2>
-        <p style={{fontSize:13,color:C.muted,marginBottom:20}}>50+ services across 9 categories</p>
+        <p style={{fontSize:13,color:C.muted,marginBottom:20}}>57+ services across 10 categories</p>
         <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10}}>
           {SERVICE_TAXONOMY.map((cat,i)=>(
             <button key={cat.id} className="anim-pop" onClick={()=>setActiveCat(cat.id)}
