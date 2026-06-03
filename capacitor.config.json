@@ -1,5 +1,5 @@
 {
-  "appId": "com.oncall.app",
+  "appId": "com.khg.oncallapp",
   "appName": "On Call",
   "webDir": "dist",
   "server": {
