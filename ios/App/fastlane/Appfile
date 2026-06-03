@@ -1,3 +1,3 @@
-app_identifier("com.oncall.app")
+app_identifier("com.khg.oncallapp")
 apple_id("dolodorsey@gmail.com")
 itc_team_id("")
