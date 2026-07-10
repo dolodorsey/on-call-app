@@ -1,0 +1,10 @@
+{
+  "app": "on-call-app",
+  "brand": "On Call",
+  "service": "on-demand-home-services",
+  "status": "ok",
+  "schema_version": 1,
+  "release_gate": "enterprise-control-plane",
+  "authority": "MCP Gateway public.oc_*",
+  "generated_at": "2026-07-10T00:00:00-04:00"
+}
