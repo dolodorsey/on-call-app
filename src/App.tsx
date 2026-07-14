@@ -95,7 +95,8 @@ class OCErrorBoundary extends React.Component<{children:React.ReactNode},{hasErr
 /*               MAIN APP                  */
 /* ════════════════════════════════════════ */
 const App = () => {
-  const [screen, setScreen] = useState('landing');
+  const providerSignupRequested = new URLSearchParams(window.location.search).get('view') === 'provider-signup';
+  const [screen, setScreen] = useState(providerSignupRequested ? 'auth-hero' : 'landing');
   const [fade, setFade] = useState(true);
   const [userName, setUserName] = useState('');
   const [userId, setUserId] = useState('');
@@ -178,7 +179,8 @@ const App = () => {
 /*             AUTH SCREEN                 */
 /* ════════════════════════════════════════ */
 const AuthScreen = ({role,onBack,onLogin}) => {
-  const [mode,setMode]=useState('signin');
+  const providerSignupRequested = role === 'hero' && new URLSearchParams(window.location.search).get('view') === 'provider-signup';
+  const [mode,setMode]=useState(providerSignupRequested ? 'signup' : 'signin');
   const [email,setEmail]=useState('');
   const [password,setPassword]=useState('');
   const [name,setName]=useState('');
