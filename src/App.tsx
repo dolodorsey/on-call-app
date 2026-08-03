@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, type CSSProperties } from 'react';
 import ProviderApply from '../components/ProviderApply';
 import { Elements, PaymentElement, useElements, useStripe } from '@stripe/react-stripe-js';
 import { loadStripe } from '@stripe/stripe-js';
@@ -16,11 +16,11 @@ const C = {
 };
 
 /* ─── shared inline helpers ─── */
-const flex = (dir='row',align='center',justify='center',gap=0) => ({display:'flex',flexDirection:dir,alignItems:align,justifyContent:justify,gap});
-const btn = (bg,color='#fff',extra) => ({background:bg,color,border:'none',borderRadius:14,padding:'14px 28px',fontSize:16,fontWeight:700,cursor:'pointer',transition:'all .2s',...extra});
-const cardStyle = {background:C.card,borderRadius:16,padding:20,border:`1px solid ${C.border}`,boxShadow:'0 1px 3px rgba(0,0,0,0.04)'};
-const inputStyle = {width:'100%',padding:'14px 16px',background:C.card2,border:`1px solid ${C.border}`,borderRadius:12,color:C.text,fontSize:14,outline:'none',boxSizing:'border-box'};
-const errText = {fontSize:12,color:C.red,marginTop:4};
+const flex = (dir:CSSProperties['flexDirection']='row',align:CSSProperties['alignItems']='center',justify:CSSProperties['justifyContent']='center',gap=0):CSSProperties => ({display:'flex',flexDirection:dir,alignItems:align,justifyContent:justify,gap});
+const btn = (bg:string,color='#fff',extra:CSSProperties={}):CSSProperties => ({background:bg,color,border:'none',borderRadius:14,padding:'14px 28px',fontSize:16,fontWeight:700,cursor:'pointer',transition:'all .2s',...extra});
+const cardStyle:CSSProperties = {background:C.card,borderRadius:16,padding:20,border:`1px solid ${C.border}`,boxShadow:'0 1px 3px rgba(0,0,0,0.04)'};
+const inputStyle:CSSProperties = {width:'100%',padding:'14px 16px',background:C.card2,border:`1px solid ${C.border}`,borderRadius:12,color:C.text,fontSize:14,outline:'none',boxSizing:'border-box'};
+const errText:CSSProperties = {fontSize:12,color:C.red,marginTop:4};
 
 /* ─── types ─── */
 const SERVICES = [
@@ -128,7 +128,7 @@ const App = () => {
     navigate('landing');
   };
 
-  const wrapper = {
+  const wrapper:CSSProperties = {
     maxWidth:430,margin:'0 auto',minHeight:'100dvh',background:C.bg,
     fontFamily:"'DM Sans', 'SF Pro Display', -apple-system, BlinkMacSystemFont, sans-serif",
     color:C.text,position:'relative',overflow:'hidden',
@@ -176,7 +176,7 @@ const AuthScreen = ({role,onBack,onLogin}) => {
   const [email,setEmail]=useState('');
   const [password,setPassword]=useState('');
   const [name,setName]=useState('');
-  const [touched,setTouched]=useState({});
+  const [touched,setTouched]=useState<{email?:boolean;password?:boolean;name?:boolean}>({});
   const [loading,setLoading]=useState(false);
   const [authError,setAuthError]=useState('');
 

@@ -20,6 +20,10 @@ Brand: ON CALL (kept separate from S.O.S. and all other KHG brands)
 - Fabricated booking history, card details, payout totals, ratings, testimonials, and performance claims were removed from the interface.
 - Production web build passes.
 - Production dependency audit reports zero known vulnerabilities.
+- Capacitor iOS and Android projects are upgraded to 8.5 and synchronized from the verified production web build.
+- The iOS simulator target builds successfully on Xcode with the ON CALL app identifier and approved icon assets.
+- A complete Android project now exists with ON CALL launcher artwork and the required customer-location permissions.
+- The main application now passes its TypeScript check; the earlier strict-style typing failures have been resolved.
 - Booking/payment tables have RLS enabled; customers and assigned providers can read only their own payment records, while all writes remain server-only.
 - Unauthenticated payment-function call returns HTTP 401 and an invalid webhook signature returns HTTP 400.
 - Invalid provider application test returns HTTP 400 with the expected CORS origin and creates no record.
@@ -28,5 +32,5 @@ Brand: ON CALL (kept separate from S.O.S. and all other KHG brands)
 
 - The payment code and database lifecycle are live, but money movement remains intentionally unavailable until a newly rotated Stripe live key, publishable key, and webhook signing secret are configured. The secret previously pasted into chat must not be used.
 - A full authenticated customer/provider production run needs approved test accounts and a test inbox.
-- App Store archive/signing was not performed in this release.
-- The older broad TypeScript file has pre-existing strict-style typing failures, although the production Vite build succeeds.
+- Signed App Store/Play Store archives were not performed in this release.
+- Android compilation remains a workstation gate until the required Android SDK and Java toolchain are installed; the Android project itself is generated and synchronized.

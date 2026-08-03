@@ -17,22 +17,22 @@
     "android:run": "npx cap run android"
   },
   "dependencies": {
-    "@capacitor/android": "^8.3.0",
+    "@capacitor/android": "^8.5.0",
     "@capacitor/browser": "^8.0.3",
-    "@capacitor/cli": "^8.3.0",
-    "@capacitor/core": "^8.3.0",
+    "@capacitor/core": "^8.5.0",
     "@capacitor/haptics": "^8.0.2",
-    "@capacitor/ios": "^8.3.0",
+    "@capacitor/ios": "^8.5.0",
     "@capacitor/share": "^8.0.1",
-    "@capacitor/splash-screen": "^8.0.1",
-    "@capacitor/status-bar": "^8.0.2",
+    "@capacitor/splash-screen": "^8.0.2",
+    "@capacitor/status-bar": "^8.0.3",
     "@stripe/react-stripe-js": "^6.8.0",
     "@stripe/stripe-js": "^9.12.1",
-    "@supabase/supabase-js": "^2.97.0",
-    "react": "^19.2.4",
-    "react-dom": "^19.2.4"
+    "@supabase/supabase-js": "^2.112.0",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8"
   },
   "devDependencies": {
+    "@capacitor/cli": "^8.5.0",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^5.1.4",
