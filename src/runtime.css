@@ -1,0 +1,94 @@
+.oc-route-loading,
+.oc-runtime-fallback {
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 30px;
+  text-align: center;
+  color: #f5f9ff;
+  background:
+    radial-gradient(circle at 50% 18%, rgba(58, 160, 255, 0.23), transparent 34%),
+    linear-gradient(180deg, #10243d 0%, #07111f 72%);
+  font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+.oc-route-loading__mark,
+.oc-runtime-fallback__mark {
+  width: 68px;
+  height: 68px;
+  display: grid;
+  place-items: center;
+  margin-bottom: 22px;
+  border: 1px solid rgba(96, 198, 255, 0.44);
+  border-radius: 22px;
+  color: #7dd3fc;
+  background: rgba(25, 118, 210, 0.14);
+  font-size: 20px;
+  font-weight: 900;
+  letter-spacing: -0.04em;
+}
+
+.oc-route-loading__pulse {
+  width: 110px;
+  height: 2px;
+  margin: 0 0 16px;
+  overflow: hidden;
+  border-radius: 99px;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.oc-route-loading__pulse::after {
+  content: '';
+  display: block;
+  width: 45%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, #38bdf8, transparent);
+  animation: oc-runtime-scan 1s ease-in-out infinite;
+}
+
+.oc-route-loading span,
+.oc-runtime-fallback__eyebrow {
+  color: #7dd3fc;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+}
+
+.oc-runtime-fallback h1 {
+  max-width: 360px;
+  margin: 12px 0 10px;
+  font-size: clamp(30px, 8vw, 44px);
+  line-height: 1;
+  letter-spacing: -0.045em;
+}
+
+.oc-runtime-fallback p {
+  max-width: 360px;
+  margin: 0 0 24px;
+  color: rgba(245, 249, 255, 0.66);
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.oc-runtime-fallback button {
+  min-height: 50px;
+  padding: 0 24px;
+  border: 0;
+  border-radius: 14px;
+  color: #06111f;
+  background: linear-gradient(135deg, #7dd3fc, #2585e8);
+  font-weight: 900;
+  cursor: pointer;
+}
+
+@keyframes oc-runtime-scan {
+  from { transform: translateX(-120%); }
+  to { transform: translateX(240%); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .oc-route-loading__pulse::after { animation: none; }
+}
