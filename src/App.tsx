@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import ProviderApply from '../components/ProviderApply';
-import { supabase, signUp, signIn, signOut, getSession, createBooking, getBookings, resetPassword } from './supabase';
+import { supabase, signUp, signIn, signOut, getSession, createBooking, getBookings, getProfile, resetPassword, getProviderProfile, toggleAvailability, getProviderBookings, getAvailableOffers, acceptOffer, transitionBooking } from './supabase';
 
 // Haptic feedback for native iOS
 const tap=async(style='Medium')=>{try{const{Haptics,ImpactStyle}=await import('@capacitor/haptics');await Haptics.impact({style:ImpactStyle[style]||ImpactStyle.Medium});}catch{}};
@@ -109,10 +109,11 @@ const App = () => {
     getSession().then(session => {
       if (session?.user) {
         const name = session.user.user_metadata?.full_name || session.user.email?.split('@')[0] || 'User';
-        const role = session.user.user_metadata?.role || 'customer';
-        setUserName(name);
-        setUserId(session.user.id);
-        setScreen(role === 'provider' ? 'hero' : 'citizen');
+        getProfile(session.user.id).then(profile => {
+          setUserName(profile?.full_name || name);
+          setUserId(session.user.id);
+          setScreen(profile?.role === 'provider' ? 'hero' : 'citizen');
+        }).catch(() => setScreen('landing'));
       }
     });
     // Listen for auth changes
@@ -202,6 +203,10 @@ const AuthScreen = ({role,onBack,onLogin}) => {
 
   const handleSubmit = async () => {
     if(!isValid || loading) return;
+    if (mode === 'signup' && !isCitizen) {
+      window.location.assign('/apply');
+      return;
+    }
     setLoading(true);
     setAuthError('');
     try {
@@ -214,7 +219,11 @@ const AuthScreen = ({role,onBack,onLogin}) => {
         onLogin(displayName, data.user?.id || '');
       } else {
         const data = await signIn(email, password);
-        const displayName = data.user?.user_metadata?.full_name || email.split('@')[0];
+        const profile = data.user?.id ? await getProfile(data.user.id) : null;
+        if (!isCitizen && profile?.role !== 'provider') {
+          throw new Error('Your provider account is not approved yet. Submit an application or contact ON CALL support.');
+        }
+        const displayName = profile?.full_name || data.user?.user_metadata?.full_name || email.split('@')[0];
         onLogin(displayName, data.user?.id || '');
       }
     } catch (err: any) {
@@ -243,7 +252,7 @@ const AuthScreen = ({role,onBack,onLogin}) => {
 
         <div style={{...flex('row','center','center',0),width:'100%',marginBottom:28,background:C.card2,borderRadius:12,padding:4,border:`1px solid ${C.border}`}}>
           <button onClick={()=>{setMode('signin');setTouched({});}} style={{flex:1,padding:'10px 0',borderRadius:10,border:'none',cursor:'pointer',fontSize:14,fontWeight:700,background:mode==='signin'?accent:'transparent',color:mode==='signin'?C.white:C.muted,transition:'all .2s'}}>Sign In</button>
-          <button onClick={()=>{setMode('signup');setTouched({});}} style={{flex:1,padding:'10px 0',borderRadius:10,border:'none',cursor:'pointer',fontSize:14,fontWeight:700,background:mode==='signup'?accent:'transparent',color:mode==='signup'?C.white:C.muted,transition:'all .2s'}}>Create Account</button>
+          <button onClick={()=>{if(!isCitizen){window.location.assign('/apply');return;}setMode('signup');setTouched({});}} style={{flex:1,padding:'10px 0',borderRadius:10,border:'none',cursor:'pointer',fontSize:14,fontWeight:700,background:mode==='signup'?accent:'transparent',color:mode==='signup'?C.white:C.muted,transition:'all .2s'}}>{isCitizen?'Create Account':'Apply'}</button>
         </div>
 
         <div style={{width:'100%',maxWidth:360}}>
@@ -286,9 +295,9 @@ const AuthScreen = ({role,onBack,onLogin}) => {
 
           {mode==='signin'&&(
             <button onClick={async()=>{
-              if(!email.trim()){setError('Enter your email first');return;}
-              try{await resetPassword(email);setError('');alert('Password reset email sent to '+email);}
-              catch(e:any){setError(e.message||'Failed to send reset email');}
+              if(!email.trim()){setAuthError('Enter your email first');return;}
+              try{await resetPassword(email);setAuthError('');alert('Password reset email sent to '+email);}
+              catch(e:any){setAuthError(e.message||'Failed to send reset email');}
             }} style={{background:'none',border:'none',color:accent,fontSize:13,cursor:'pointer',width:'100%',textAlign:'center',fontWeight:600}}>Forgot Password?</button>
           )}
         </div>
@@ -467,6 +476,7 @@ const CitizenApp = ({userName,userId,onBack}) => {
   const [eta,setEta]=useState(1800);
   const [notifOpen,setNotifOpen]=useState(false);
   const [bookingHistory,setBookingHistory]=useState([]);
+  const [requestError,setRequestError]=useState('');
 
   // Load real booking history
   useEffect(()=>{
@@ -501,17 +511,23 @@ const CitizenApp = ({userName,userId,onBack}) => {
     }catch{}
     // Create real booking in Supabase + fire n8n webhook
     if(userId && selectedService) {
-      createBooking({
+      try {
+        await createBooking({
         customer_id: userId,
         service_name: selectedService.name,
         category_name: selectedService.category || 'Home Services',
         address,
         total_price: selectedService.price || 0,
-      }).then(()=>{
-        getBookings(userId).then(data=>{if(data.length>0) setBookingHistory(data);}).catch(()=>{});
-      }).catch(()=>{});
+        });
+        const data=await getBookings(userId);
+        if(data.length>0)setBookingHistory(data);
+        setRequestError('');
+        setReqStep('found');
+      } catch(error:any) {
+        setRequestError(error.message||'Your request could not be submitted');
+        setReqStep('confirm');
+      }
     }
-    setTimeout(()=>setReqStep('found'),3000);
   };
 
   const startTracking=()=>{
@@ -559,6 +575,7 @@ const CitizenApp = ({userName,userId,onBack}) => {
           </div>
         </div>
         <button onClick={dispatchProvider} style={{...btn(`linear-gradient(135deg, ${C.primary}, ${C.teal})`),width:'100%',fontSize:18,padding:'18px 32px',boxShadow:`0 8px 30px ${C.primary}25`,borderRadius:16}}>📲 Find Provider</button>
+        {requestError&&<div style={{fontSize:12,color:C.red,marginTop:12,textAlign:'center'}}>{requestError}</div>}
       </div>
     </div>
   );
@@ -581,20 +598,20 @@ const CitizenApp = ({userName,userId,onBack}) => {
 
   if(reqStep==='found') return (
     <div style={{minHeight:'100dvh',background:C.bg,...flex('column','center','center'),padding:24}}>
-      <div style={{fontSize:48,marginBottom:16,animation:'bounce-in .5s ease'}}>🎉</div>
-      <h2 style={{fontSize:24,fontWeight:900,color:C.text,margin:'0 0 8px'}}>Provider Matched!</h2>
-      <p style={{fontSize:14,color:C.gray,margin:'0 0 24px'}}>They're on the way</p>
+      <div style={{fontSize:48,marginBottom:16,animation:'bounce-in .5s ease'}}>✅</div>
+      <h2 style={{fontSize:24,fontWeight:900,color:C.text,margin:'0 0 8px'}}>Request Submitted</h2>
+      <p style={{fontSize:14,color:C.gray,margin:'0 0 24px'}}>An approved provider can now accept it.</p>
       <div style={{...cardStyle,width:'100%',maxWidth:360}}>
         <div style={{...flex('row','center','flex-start',16),marginBottom:20}}>
-          <div style={{width:64,height:64,borderRadius:16,background:`${C.green}12`,...flex('row','center','center'),fontSize:32}}>🛠️</div>
+          <div style={{width:64,height:64,borderRadius:16,background:`${C.green}12`,...flex('row','center','center'),fontSize:32}}>📡</div>
           <div>
-            <div style={{fontSize:20,fontWeight:800,color:C.text}}>Maria G.</div>
-            <div style={{fontSize:13,color:C.yellow}}>⭐ 4.9 · 312 jobs</div>
+            <div style={{fontSize:20,fontWeight:800,color:C.text}}>Matching in progress</div>
+            <div style={{fontSize:13,color:C.gray}}>We will update your booking status.</div>
           </div>
         </div>
         <div style={{...flex('row','center','space-between'),padding:'12px 0',borderTop:`1px solid ${C.border}`}}>
-          <span style={{fontSize:13,color:C.gray}}>ETA</span>
-          <span style={{fontSize:16,fontWeight:700,color:C.text}}>~30 min</span>
+          <span style={{fontSize:13,color:C.gray}}>Status</span>
+          <span style={{fontSize:16,fontWeight:700,color:C.text}}>Pending</span>
         </div>
         <div style={{...flex('row','center','space-between'),padding:'12px 0',borderTop:`1px solid ${C.border}`}}>
           <span style={{fontSize:13,color:C.gray}}>Specialty</span>
@@ -605,7 +622,7 @@ const CitizenApp = ({userName,userId,onBack}) => {
           <span style={{fontSize:13,fontWeight:600,color:C.text}}>{selectedService?.name}</span>
         </div>
       </div>
-      <button onClick={startTracking} style={{...btn(C.green),width:'100%',maxWidth:360,fontSize:16,marginTop:24,borderRadius:16}}>Track My Provider →</button>
+      <button onClick={cancelRequest} style={{...btn(C.green),width:'100%',maxWidth:360,fontSize:16,marginTop:24,borderRadius:16}}>View My Bookings</button>
       <style>{`@keyframes bounce-in{0%{transform:scale(0)}50%{transform:scale(1.2)}100%{transform:scale(1)}}`}</style>
     </div>
   );
@@ -880,7 +897,7 @@ const CitizenApp = ({userName,userId,onBack}) => {
                 <div style={{fontSize:15,fontWeight:700,color:C.text}}>{h.service}</div>
                 <div style={{fontSize:12,color:C.muted}}>{h.provider} · {h.date}</div>
                 <div style={{fontSize:11,color:C.green,marginTop:4}}>✓ {h.status}</div>
-                <button onClick={()=>openPaymentUrl(ON_CALL_STRIPE_PAYMENT_URL)} style={{...btn(C.card2,C.primary,{padding:'8px 12px',fontSize:11,fontWeight:700,marginTop:8,border:`1px solid ${C.border}`})}}>Pay with Card</button>
+                <button disabled style={{...btn(C.card2,C.muted,{padding:'8px 12px',fontSize:11,fontWeight:700,marginTop:8,border:`1px solid ${C.border}`,cursor:'not-allowed'})}}>Invoice required</button>
               </div>
               <div style={{fontSize:18,fontWeight:800,color:C.text}}>${h.cost}</div>
             </div>
@@ -911,8 +928,8 @@ const CitizenApp = ({userName,userId,onBack}) => {
                 <span style={{fontSize:13,fontWeight:700,color:C.text}}>${h.cost}</span>
               </div>
             ))}
-            <button onClick={()=>openPaymentUrl(ON_CALL_STRIPE_PAYMENT_URL)} style={{...btn(C.primary,'#fff',{width:'100%',marginTop:14,padding:'12px 16px',fontSize:13})}}>Open Stripe Payment</button>
-            <div style={{fontSize:11,color:C.muted,marginTop:8,lineHeight:1.5}}>Enter the agreed service amount in Stripe before completing payment.</div>
+            <button disabled style={{...btn(C.card2,C.muted,{width:'100%',marginTop:14,padding:'12px 16px',fontSize:13,cursor:'not-allowed'})}}>Payment opens after a verified invoice</button>
+            <div style={{fontSize:11,color:C.muted,marginTop:8,lineHeight:1.5}}>ON CALL will never ask you to type an arbitrary service amount into a generic payment link.</div>
           </div>
         </div>
       )}
@@ -960,12 +977,27 @@ const ProviderDashboard = ({userName,userId,onBack}) => {
   const [onDuty,setOnDuty]=useState(false);
   const [showAlert,setShowAlert]=useState(false);
   const [alertTimer,setAlertTimer]=useState(15);
+  const [offers,setOffers]=useState<any[]>([]);
+  const [providerJobs,setProviderJobs]=useState<any[]>([]);
+  const [portalError,setPortalError]=useState('');
 
-  useEffect(()=>{
-    if(!onDuty)return;
-    const t=setTimeout(()=>setShowAlert(true),3000);
-    return()=>clearTimeout(t);
-  },[onDuty]);
+  const refreshProviderData=useCallback(async()=>{
+    try {
+      const [profile,jobs,nextOffers]=await Promise.all([
+        getProviderProfile(userId), getProviderBookings(), getAvailableOffers()
+      ]);
+      setOnDuty(Boolean(profile?.is_available));
+      setProviderJobs(jobs);
+      setOffers(nextOffers);
+      setPortalError('');
+    } catch (error:any) {
+      setPortalError(error.message || 'Could not load provider portal');
+    }
+  },[userId]);
+
+  useEffect(()=>{if(userId)refreshProviderData();},[userId,refreshProviderData]);
+
+  useEffect(()=>{setShowAlert(onDuty && offers.length>0);},[onDuty,offers]);
 
   useEffect(()=>{
     if(!showAlert)return;
@@ -974,8 +1006,13 @@ const ProviderDashboard = ({userName,userId,onBack}) => {
     return()=>clearInterval(t);
   },[showAlert]);
 
-  const todayEarnings=245;
-  const weekEarnings=1120;
+  const completedJobs=providerJobs.filter(job=>job.status==='completed');
+  const todayEarnings=completedJobs.filter(job=>new Date(job.completed_at||job.updated_at).toDateString()===new Date().toDateString()).reduce((sum,job)=>sum+Number(job.total_price||0),0);
+  const weekEarnings=completedJobs.filter(job=>Date.now()-new Date(job.completed_at||job.updated_at).getTime()<7*86400000).reduce((sum,job)=>sum+Number(job.total_price||0),0);
+  const currentOffer=offers[0];
+  const setDuty=async(next:boolean)=>{try{await toggleAvailability(userId,next);setOnDuty(next);if(next)await refreshProviderData();else setShowAlert(false);}catch(error:any){setPortalError(error.message||'Availability could not be updated');}};
+  const takeOffer=async()=>{if(!currentOffer)return;try{await acceptOffer(currentOffer.id);setShowAlert(false);setTab('jobs');await refreshProviderData();}catch(error:any){setPortalError(error.message||'Offer is no longer available');await refreshProviderData();}};
+  const advanceJob=async(job:any)=>{const next={assigned:'en_route',en_route:'on_site',on_site:'working',working:'completed'}[job.status];if(!next)return;try{await transitionBooking(job.id,next);await refreshProviderData();}catch(error:any){setPortalError(error.message||'Job status could not be updated');}};
 
   return (
     <div style={{minHeight:'100dvh',background:C.bg,paddingBottom:80}}>
@@ -988,7 +1025,7 @@ const ProviderDashboard = ({userName,userId,onBack}) => {
             <div style={{fontSize:11,color:onDuty?C.green:C.muted}}>{onDuty?'● Available':'○ Offline'}</div>
           </div>
         </div>
-        <button onClick={()=>{setOnDuty(!onDuty);if(onDuty)setShowAlert(false);}} style={{...flex('row','center','center',8),background:onDuty?`${C.green}08`:C.card2,border:`1px solid ${onDuty?C.green:C.border}`,borderRadius:20,padding:'8px 16px',cursor:'pointer'}}>
+        <button onClick={()=>setDuty(!onDuty)} style={{...flex('row','center','center',8),background:onDuty?`${C.green}08`:C.card2,border:`1px solid ${onDuty?C.green:C.border}`,borderRadius:20,padding:'8px 16px',cursor:'pointer'}}>
           <div style={{width:10,height:10,borderRadius:'50%',background:onDuty?C.green:C.grayLight}}/>
           <span style={{fontSize:12,fontWeight:700,color:onDuty?C.green:C.gray}}>{onDuty?'AVAILABLE':'OFFLINE'}</span>
         </button>
@@ -1004,19 +1041,15 @@ const ProviderDashboard = ({userName,userId,onBack}) => {
               </div>
             </div>
             <div style={{fontSize:12,color:C.primary,fontWeight:700,letterSpacing:2,marginBottom:8}}>📲 NEW JOB REQUEST</div>
-            <div style={{fontSize:20,fontWeight:800,color:C.text,marginBottom:4}}>Deep Cleaning</div>
-            <div style={{fontSize:13,color:C.gray,marginBottom:16}}>Karen L. · 3BR Home</div>
-            <div style={{...flex('row','center','flex-start',8),marginBottom:8}}>
-              <span style={{color:C.primary}}>📍</span>
-              <span style={{fontSize:13,color:C.gray}}>456 Maple Ave · 1.8 mi away</span>
-            </div>
+            <div style={{fontSize:20,fontWeight:800,color:C.text,marginBottom:4}}>{currentOffer?.service_name}</div>
+            <div style={{fontSize:13,color:C.gray,marginBottom:16}}>Verified ON CALL request</div>
             <div style={{...flex('row','center','flex-start',8),marginBottom:16}}>
               <span style={{color:C.green}}>💰</span>
-              <span style={{fontSize:20,fontWeight:900,color:C.green}}>$85.00</span>
+              <span style={{fontSize:20,fontWeight:900,color:C.green}}>${Number(currentOffer?.total_price||0).toFixed(2)}</span>
             </div>
             <div style={flex('row','center','center',12)}>
               <button onClick={()=>setShowAlert(false)} style={{...btn(C.card2,C.gray,{flex:1,border:`1px solid ${C.border}`})}}>Decline</button>
-              <button onClick={()=>{setShowAlert(false);setTab('jobs');}} style={{...btn(`linear-gradient(135deg, ${C.primary}, ${C.teal})`,C.white,{flex:2})}}>Accept Job</button>
+              <button onClick={takeOffer} style={{...btn(`linear-gradient(135deg, ${C.primary}, ${C.teal})`,C.white,{flex:2})}}>Accept Job</button>
             </div>
           </div>
         </div>
@@ -1046,7 +1079,7 @@ const ProviderDashboard = ({userName,userId,onBack}) => {
               <div style={{fontSize:16,fontWeight:700,color:C.text}}>Availability</div>
               <div style={{fontSize:12,color:onDuty?C.green:C.muted}}>{onDuty?'Receiving job requests':'Go online to receive jobs'}</div>
             </div>
-            <button onClick={()=>{setOnDuty(!onDuty);if(onDuty)setShowAlert(false);}} style={{width:56,height:32,borderRadius:16,background:onDuty?C.green:C.grayLighter,border:'none',cursor:'pointer',position:'relative',transition:'all .3s'}}>
+            <button onClick={()=>setDuty(!onDuty)} style={{width:56,height:32,borderRadius:16,background:onDuty?C.green:C.grayLighter,border:'none',cursor:'pointer',position:'relative',transition:'all .3s'}}>
               <div style={{width:26,height:26,borderRadius:'50%',background:C.white,position:'absolute',top:3,left:onDuty?27:3,transition:'left .3s',boxShadow:'0 2px 4px rgba(0,0,0,0.15)'}}/>
             </button>
           </div>
@@ -1077,14 +1110,16 @@ const ProviderDashboard = ({userName,userId,onBack}) => {
       {tab==='jobs'&&(
         <div className="anim-tab" style={{padding:20}}>
           <h2 style={{fontSize:20,fontWeight:800,color:C.text,marginBottom:16}}>Recent Jobs</h2>
-          {MISSIONS_HISTORY.map((m,i)=>(
-            <div key={i} style={{...cardStyle,...flex('row','center','space-between'),marginBottom:12}}>
+          {portalError&&<div style={{...cardStyle,border:`1px solid ${C.red}`,color:C.red,marginBottom:12,fontSize:12}}>{portalError}</div>}
+          {providerJobs.length===0&&<div style={{...cardStyle,color:C.muted,textAlign:'center'}}>No accepted jobs yet.</div>}
+          {providerJobs.map((m,i)=>(
+            <div key={m.id||i} style={{...cardStyle,...flex('row','center','space-between'),marginBottom:12}}>
               <div>
-                <div style={{fontSize:15,fontWeight:700,color:C.text}}>{m.service}</div>
-                <div style={{fontSize:12,color:C.muted}}>{m.customer} · {m.time}</div>
-                <div style={{fontSize:11,color:C.yellow}}>{'⭐'.repeat(m.rating)}</div>
+                <div style={{fontSize:15,fontWeight:700,color:C.text}}>{m.service_name}</div>
+                <div style={{fontSize:12,color:C.muted}}>{String(m.status).replace('_',' ').toUpperCase()}</div>
+                {m.rating&&<div style={{fontSize:11,color:C.yellow}}>{'⭐'.repeat(m.rating)}</div>}
               </div>
-              <div style={{fontSize:20,fontWeight:800,color:C.green}}>+${m.earned}</div>
+              <div style={{textAlign:'right'}}><div style={{fontSize:20,fontWeight:800,color:C.green}}>${Number(m.total_price||0).toFixed(2)}</div>{['assigned','en_route','on_site','working'].includes(m.status)&&<button onClick={()=>advanceJob(m)} style={{...btn(C.primary,'#fff',{padding:'7px 10px',fontSize:10,marginTop:6})}}>{({assigned:'Start route',en_route:'Arrived',on_site:'Start work',working:'Complete'})[m.status]}</button>}</div>
             </div>
           ))}
         </div>

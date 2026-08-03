@@ -14,7 +14,9 @@ export const signUp = async (email: string, password: string, fullName: string, 
     email,
     password,
     options: {
-      data: { full_name: fullName, role },
+      // The database assigns customer by default. Provider access is granted only
+      // after the separate application and approval process.
+      data: { full_name: fullName },
     },
   });
   if (error) throw error;
@@ -26,7 +28,7 @@ export const signUp = async (email: string, password: string, fullName: string, 
     body: JSON.stringify({
       email,
       full_name: fullName,
-      role,
+      requested_role: role,
       user_id: data.user?.id || '',
     }),
   }).catch(() => {}); // silent fail — don't block signup
@@ -86,28 +88,20 @@ export const createBooking = async (booking: {
   const ocUserId = await getOcUserId(booking.customer_id);
   if (!ocUserId) throw new Error('No oc_users record found for this auth user');
 
-  const { data, error } = await supabase
-    .from('oc_bookings')
-    .insert({
-      customer_id: ocUserId,
-      service_name: booking.service_name,
-      category_name: booking.category_name || 'Home Services',
-      status: 'pending',
-      address: booking.address,
-      lat: booking.lat || null,
-      lng: booking.lng || null,
-      total_price: booking.total_price,
-      scheduled_at: booking.scheduled_at || null,
-    })
-    .select()
-    .single();
+  const { data, error } = await supabase.rpc('oc_request_service', {
+    p_service_name: booking.service_name,
+    p_address: booking.address,
+    p_lat: booking.lat || null,
+    p_lng: booking.lng || null,
+    p_scheduled_at: booking.scheduled_at || null,
+  });
 
   if (error) throw error;
 
   // Get customer profile for GHL sync
   const { data: profile } = await supabase
     .from('oc_users')
-    .select('full_name, email')
+    .select('full_name, email, ghl_contact_id')
     .eq('id', ocUserId)
     .single();
 
@@ -213,5 +207,50 @@ export const getProviderProfile = async (authUserId: string) => {
     .single();
 
   if (error) return null;
+  return data;
+};
+
+export const getProviderBookings = async () => {
+  const { data, error } = await supabase
+    .from('oc_bookings')
+    .select('*')
+    .order('created_at', { ascending: false });
+  if (error) throw error;
+  return data || [];
+};
+
+export const getAvailableOffers = async () => {
+  const { data, error } = await supabase.rpc('oc_available_offers');
+  if (error) throw error;
+  return data || [];
+};
+
+export const acceptOffer = async (bookingId: string) => {
+  const { data, error } = await supabase.rpc('oc_accept_offer', { p_booking_id: bookingId });
+  if (error) throw error;
+  return data;
+};
+
+export const transitionBooking = async (bookingId: string, status: string) => {
+  const { data, error } = await supabase.rpc('oc_provider_transition', {
+    p_booking_id: bookingId,
+    p_status: status,
+  });
+  if (error) throw error;
+  return data;
+};
+
+export const cancelBooking = async (bookingId: string) => {
+  const { data, error } = await supabase.rpc('oc_customer_cancel', { p_booking_id: bookingId });
+  if (error) throw error;
+  return data;
+};
+
+export const rateBooking = async (bookingId: string, rating: number) => {
+  const { data, error } = await supabase.rpc('oc_rate_booking', {
+    p_booking_id: bookingId,
+    p_rating: rating,
+  });
+  if (error) throw error;
   return data;
 };
