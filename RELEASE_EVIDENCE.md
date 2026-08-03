@@ -22,6 +22,7 @@ Brand: ON CALL (kept separate from S.O.S. and all other KHG brands)
 - Production dependency audit reports zero known vulnerabilities.
 - Capacitor iOS and Android projects are upgraded to 8.5 and synchronized from the verified production web build.
 - The iOS simulator target builds successfully on Xcode with the ON CALL app identifier and approved icon assets.
+- A distribution-signed App Store Connect IPA exports successfully for `com.khg.oncallapp` with team `AFU6P8WW9K`; its recorded SHA-256 is `7b22bb32d71951354e8e446642ae920244644d8475927b7d3065b5627d5dbf89`.
 - A complete Android project now exists with ON CALL launcher artwork and the required customer-location permissions.
 - The main application now passes its TypeScript check; the earlier strict-style typing failures have been resolved.
 - Booking/payment tables have RLS enabled; customers and assigned providers can read only their own payment records, while all writes remain server-only.
@@ -32,5 +33,5 @@ Brand: ON CALL (kept separate from S.O.S. and all other KHG brands)
 
 - The payment code and database lifecycle are live, but money movement remains intentionally unavailable until a newly rotated Stripe live key, publishable key, and webhook signing secret are configured. The secret previously pasted into chat must not be used.
 - A full authenticated customer/provider production run needs approved test accounts and a test inbox.
-- Signed App Store/Play Store archives were not performed in this release.
+- The App Store IPA is export-verified but has not been uploaded to App Store Connect; Play Store signing remains pending the Android release toolchain.
 - Android compilation remains a workstation gate until the required Android SDK and Java toolchain are installed; the Android project itself is generated and synchronized.
