@@ -2,7 +2,7 @@ import { createClient } from "npm:@supabase/supabase-js@2.112.0";
 import Stripe from "npm:stripe@18.5.0";
 
 export const cors = {
-  "Access-Control-Allow-Origin": Deno.env.get("ON_CALL_APP_ORIGIN") ?? "https://on-call-app.vercel.app",
+  "Access-Control-Allow-Origin": Deno.env.get("ON_CALL_APP_ORIGIN") ?? "https://oncallallday.com",
   "Access-Control-Allow-Headers": "authorization, apikey, content-type, x-client-info",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
