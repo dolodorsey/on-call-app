@@ -237,12 +237,43 @@ export const transitionBooking = async (bookingId: string, status: string) => {
     p_status: status,
   });
   if (error) throw error;
+  if (status === 'completed') {
+    const { error: captureError } = await supabase.functions.invoke('oc-capture-payment', { body: { bookingId } });
+    if (captureError) throw new Error(`Service completed, but payment capture needs attention: ${captureError.message}`);
+  }
   return data;
+};
+
+export const createBookingPayment = async (bookingId: string) => {
+  const { data, error } = await supabase.functions.invoke('oc-create-payment', { body: { bookingId } });
+  if (error) throw error;
+  return data as { paymentId: string; clientSecret: string; status: string };
+};
+
+export const getBookingPayments = async () => {
+  const { data, error } = await supabase
+    .from('oc_booking_payments')
+    .select('*,booking:oc_bookings(service_name,status,created_at)')
+    .order('created_at', { ascending: false });
+  if (error) throw error;
+  return data || [];
+};
+
+export const startProviderOnboarding = async () => {
+  const { data, error } = await supabase.functions.invoke('oc-connect-onboarding', { body: {} });
+  if (error) throw error;
+  if (!data?.url) throw new Error('Payout onboarding link was not created');
+  window.location.assign(data.url);
 };
 
 export const cancelBooking = async (bookingId: string) => {
   const { data, error } = await supabase.rpc('oc_customer_cancel', { p_booking_id: bookingId });
   if (error) throw error;
+  const { data: payment } = await supabase.from('oc_booking_payments').select('id,status').eq('booking_id', bookingId).maybeSingle();
+  if (payment && !['captured','transferred','partially_refunded','refunded'].includes(payment.status)) {
+    const { error: cancelError } = await supabase.functions.invoke('oc-cancel-payment', { body: { bookingId } });
+    if (cancelError) throw new Error(`Booking canceled, but payment authorization needs attention: ${cancelError.message}`);
+  }
   return data;
 };
 

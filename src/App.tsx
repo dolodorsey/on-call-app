@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import ProviderApply from '../components/ProviderApply';
-import { supabase, signUp, signIn, signOut, getSession, createBooking, getBookings, getProfile, resetPassword, getProviderProfile, toggleAvailability, getProviderBookings, getAvailableOffers, acceptOffer, transitionBooking } from './supabase';
+import { Elements, PaymentElement, useElements, useStripe } from '@stripe/react-stripe-js';
+import { loadStripe } from '@stripe/stripe-js';
+import { supabase, signUp, signIn, signOut, getSession, createBooking, getBookings, getProfile, resetPassword, getProviderProfile, toggleAvailability, getProviderBookings, getAvailableOffers, acceptOffer, transitionBooking, createBookingPayment, getBookingPayments, startProviderOnboarding, cancelBooking, rateBooking } from './supabase';
 
 // Haptic feedback for native iOS
 const tap=async(style='Medium')=>{try{const{Haptics,ImpactStyle}=await import('@capacitor/haptics');await Haptics.impact({style:ImpactStyle[style]||ImpactStyle.Medium});}catch{}};
@@ -30,26 +32,8 @@ const SERVICES = [
   {name:'Private Chef',emoji:'👨‍🍳',price:150,eta:'60 min'},
 ];
 
-const ON_CALL_STRIPE_PAYMENT_URL = 'https://buy.stripe.com/28E28sgtt6kUcBWcq5dUY06';
-
-const REVIEWS = [
-  {text:'ON CALL sent a cleaning team 40 minutes before our guests arrived. The house was spotless. This app is a lifesaver.',name:'Danielle R.',plan:'Verified Member',stars:5},
-  {text:'I use ON CALL for everything now. Plumber last week, private chef this weekend. One app for all of it.',name:'Marcus T.',plan:'Active Member',stars:5},
-  {text:'The handyman was professional, on time, and fixed everything in one visit. Finally a platform I can trust.',name:'Angela W.',plan:'Community Member',stars:5},
-];
-
-const MISSIONS_HISTORY = [
-  {customer:'Karen L.',service:'Deep Clean',earned:85,time:'2:15 PM',rating:5},
-  {customer:'James M.',service:'Plumbing',earned:95,time:'11:30 AM',rating:5},
-  {customer:'Priya K.',service:'Lawn Care',earned:55,time:'9:45 AM',rating:4},
-  {customer:'David W.',service:'Handyman',earned:65,time:'Yesterday',rating:5},
-];
-
-const CITIZEN_HISTORY = [
-  {service:'Deep Clean',provider:'Maria G.',date:'Today, 2:15 PM',cost:85,status:'Completed'},
-  {service:'Plumbing',provider:'Carlos R.',date:'Jan 15, 9:30 AM',cost:95,status:'Completed'},
-  {service:'Handyman',provider:'Alex T.',date:'Dec 28, 7:45 PM',cost:65,status:'Completed'},
-];
+const stripePublishableKey = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY as string | undefined;
+const stripePromise = stripePublishableKey ? loadStripe(stripePublishableKey) : null;
 
 /* ─── validation helpers ─── */
 const isValidEmail = (e) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e);
@@ -66,13 +50,20 @@ const passwordStrength = (p) => {
   return {label:'Strong',color:C.green,pct:100};
 };
 
-const openPaymentUrl = async (url) => {
-  try {
-    const { Native } = await import('./native');
-    await Native.openUrl(url);
-  } catch {
-    window.open(url, '_blank');
-  }
+const PaymentAuthorization = ({onComplete}:{onComplete:()=>void}) => {
+  const stripe=useStripe();
+  const elements=useElements();
+  const [busy,setBusy]=useState(false);
+  const [error,setError]=useState('');
+  const submit=async()=>{
+    if(!stripe||!elements)return;
+    setBusy(true);setError('');
+    const result=await stripe.confirmPayment({elements,redirect:'if_required'});
+    if(result.error)setError(result.error.message||'Payment authorization failed');
+    else onComplete();
+    setBusy(false);
+  };
+  return <div style={{...cardStyle,marginTop:12}}><PaymentElement/><button disabled={!stripe||busy} onClick={submit} style={{...btn(C.primary,'#fff',{}),width:'100%',marginTop:16}}>{busy?'Authorizing…':'Authorize booking total'}</button>{error&&<p style={errText}>{error}</p>}<p style={{fontSize:10,color:C.muted,lineHeight:1.5}}>Your card is authorized now and captured only after the provider marks the service complete.</p></div>;
 };
 
 /* ════════════════════════════════════════ */
@@ -302,18 +293,6 @@ const AuthScreen = ({role,onBack,onLogin}) => {
           )}
         </div>
 
-        <div style={{...flex('row','center','center',12),width:'100%',maxWidth:360,margin:'24px 0'}}>
-          <div style={{flex:1,height:1,background:C.border}}/>
-          <span style={{fontSize:12,color:C.muted}}>or continue with</span>
-          <div style={{flex:1,height:1,background:C.border}}/>
-        </div>
-        <div style={{...flex('row','center','center',12),width:'100%',maxWidth:360}}>
-          {['Google','Apple'].map(provider=>(
-            <button key={provider} onClick={()=>onLogin(provider+' User','')} style={{flex:1,padding:'12px 0',background:C.card,border:`1px solid ${C.border}`,borderRadius:12,color:C.text,fontSize:14,fontWeight:600,cursor:'pointer',boxShadow:'0 1px 3px rgba(0,0,0,0.04)'}}>
-              {provider==='Google'?'🔵':'🍎'} {provider}
-            </button>
-          ))}
-        </div>
         <p style={{fontSize:11,color:C.grayLight,marginTop:32,textAlign:'center',maxWidth:300}}>
           By continuing, you agree to ON CALL's Terms of Service and Privacy Policy.
         </p>
@@ -357,7 +336,7 @@ const Landing = ({onGetHelp,onProviderPortal}) => {
           <button onClick={onProviderPortal} style={{...btn('transparent',C.text,{border:`2px solid ${C.border}`,width:'100%',maxWidth:280,borderRadius:16})}}>🛠️ Become a Provider</button>
         </div>
         <div style={{...flex('row','center','center',20),marginTop:32,flexWrap:'wrap'}}>
-          {[['✓','Vetted Providers'],['⚡','Avg 30min Arrival'],['⭐','4.9/5 Rating']].map(([ic,label])=>(
+          {[['✓','Approved Providers'],['🔒','Exact-Price Payments'],['📋','Tracked Job States']].map(([ic,label])=>(
             <div key={label} style={{...flex('row','center','center',6),fontSize:12,color:C.gray}}>
               <span style={{color:C.green}}>{ic}</span>{label}
             </div>
@@ -371,8 +350,8 @@ const Landing = ({onGetHelp,onProviderPortal}) => {
         <p style={{textAlign:'center',color:C.muted,fontSize:14,margin:'0 0 32px'}}>Help in three simple steps</p>
         {[
           {step:'1',title:'Tell Us What You Need',desc:'Browse services or describe your request. We handle the rest — from cleaning to chefs to electricians.',icon:'📱',color:C.primary},
-          {step:'2',title:'Provider Matched',desc:'We match you with the closest qualified, vetted provider. Track their arrival in real-time with GPS.',icon:'🎯',color:C.teal},
-          {step:'3',title:'Done & Rated',desc:'Professional service with transparent pricing. Pay securely through the app when the job is complete.',icon:'✅',color:C.green},
+          {step:'2',title:'Provider Accepts',desc:'An approved, available provider can atomically accept the address-safe offer.',icon:'🎯',color:C.teal},
+          {step:'3',title:'Authorized, Done & Rated',desc:'Authorize the exact booking total, follow verified job states, and rate after completion.',icon:'✅',color:C.green},
         ].map((s,i)=>(
           <div key={s.step} className="anim-rise" style={{...cardStyle,...flex('row','flex-start','flex-start',16),marginBottom:16,animationDelay:`${i*0.12}s`}}>
             <div style={{width:48,height:48,borderRadius:14,background:`${s.color}10`,...flex('row','center','center'),fontSize:24,flexShrink:0}}>{s.icon}</div>
@@ -404,13 +383,13 @@ const Landing = ({onGetHelp,onProviderPortal}) => {
       {/* SAFETY / TRUST */}
       <section style={{padding:'48px 24px',borderTop:`1px solid ${C.border}`}}>
         <h2 style={{fontSize:24,fontWeight:800,textAlign:'center',color:C.text,margin:'0 0 8px'}}>Trust & Safety Built In</h2>
-        <p style={{textAlign:'center',color:C.muted,fontSize:14,margin:'0 0 32px'}}>Every provider is thoroughly vetted and verified</p>
+        <p style={{textAlign:'center',color:C.muted,fontSize:14,margin:'0 0 32px'}}>Approval, identity, payment, and job-state controls are enforced by the backend.</p>
         <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12}}>
           {[
             {icon:'🛡️',title:'Background Checked',desc:'Comprehensive verification for all providers'},
-            {icon:'⭐',title:'Highly Rated',desc:'Only top-rated professionals'},
-            {icon:'📍',title:'GPS Tracked',desc:'Real-time location sharing'},
-            {icon:'📞',title:'24/7 Support',desc:'Always available when you need us'},
+            {icon:'⭐',title:'Completion Ratings',desc:'Customers rate completed bookings only'},
+            {icon:'📍',title:'Address-Safe Offers',desc:'Location stays private until acceptance'},
+            {icon:'🔒',title:'Protected Payments',desc:'Authorize first, capture after completion'},
           ].map(c=>(
             <div key={c.title} style={{...cardStyle,textAlign:'center',padding:20}}>
               <div style={{fontSize:28,marginBottom:8}}>{c.icon}</div>
@@ -421,32 +400,25 @@ const Landing = ({onGetHelp,onProviderPortal}) => {
         </div>
       </section>
 
-      {/* TESTIMONIALS */}
+      {/* PRODUCT GUARANTEES */}
       <section style={{padding:'48px 24px',borderTop:`1px solid ${C.border}`}}>
-        <h2 style={{fontSize:24,fontWeight:800,textAlign:'center',color:C.text,margin:'0 0 8px'}}>What People Say</h2>
-        <p style={{textAlign:'center',color:C.muted,fontSize:14,margin:'0 0 32px'}}>Real stories from real customers</p>
-        {REVIEWS.map((r,i)=>(
-          <div key={i} style={{...cardStyle,marginBottom:16}}>
-            <div style={{marginBottom:8}}>{Array(r.stars).fill('⭐').join('')}</div>
-            <p style={{fontSize:14,color:C.gray,lineHeight:1.6,margin:'0 0 12px',fontStyle:'italic'}}>"{r.text}"</p>
-            <div style={{fontSize:13,fontWeight:700,color:C.text}}>{r.name}</div>
-            <div style={{fontSize:11,color:C.muted}}>{r.plan}</div>
-          </div>
-        ))}
+        <h2 style={{fontSize:24,fontWeight:800,textAlign:'center',color:C.text,margin:'0 0 8px'}}>Built around the booking</h2>
+        <p style={{textAlign:'center',color:C.muted,fontSize:14,margin:'0 0 32px'}}>Clear states from request through payout.</p>
+        {[['🔒','Exact-price authorization','The server selects the service price after a provider accepts.'],['📍','Address-safe offers','Providers see the service offer before the customer address is disclosed.'],['✅','Capture after completion','Authorized funds are captured only when the assigned provider completes the job.']].map(([icon,title,copy])=><div key={title} style={{...cardStyle,marginBottom:12,...flex('row','center','flex-start',12)}}><span style={{fontSize:26}}>{icon}</span><span><strong style={{display:'block',fontSize:14}}>{title}</strong><small style={{display:'block',color:C.muted,lineHeight:1.5,marginTop:4}}>{copy}</small></span></div>)}
       </section>
 
       {/* BECOME A PROVIDER */}
       <section style={{padding:'48px 24px',borderTop:`1px solid ${C.border}`,textAlign:'center',background:`radial-gradient(ellipse at 50% 100%,rgba(16,185,129,0.06) 0%,transparent 60%)`}}>
         <div style={{fontSize:48,marginBottom:16}}>🛠️</div>
         <h2 style={{fontSize:24,fontWeight:800,color:C.text,margin:'0 0 8px'}}>Become an ON CALL Provider</h2>
-        <p style={{fontSize:14,color:C.gray,margin:'0 0 24px',maxWidth:320,marginLeft:'auto',marginRight:'auto',lineHeight:1.6}}>Earn on your schedule helping people with the skills you already have. Flexible hours, instant payouts, and the ability to grow your own business.</p>
+        <p style={{fontSize:14,color:C.gray,margin:'0 0 24px',maxWidth:320,marginLeft:'auto',marginRight:'auto',lineHeight:1.6}}>Apply to offer your skills on your schedule. Approved providers complete secure Stripe payout onboarding before paid work begins.</p>
         <button onClick={onProviderPortal} style={{...btn(C.green),fontSize:16,padding:'14px 40px',borderRadius:16}}>Apply Now</button>
       </section>
 
-      {/* TRUST METRICS */}
+      {/* RELEASE STATUS */}
       <section style={{padding:'40px 24px',borderTop:`1px solid ${C.border}`}}>
         <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:16}}>
-          {[['50+','Service Categories'],['4.9','App Rating'],['30 min','Avg Arrival'],['98%','Jobs Completed']].map(([val,label])=>(
+          {[['6','Priced services'],['1:1','Booking payments'],['5','Job states'],['RLS','Private records']].map(([val,label])=>(
             <div key={label} style={{textAlign:'center'}}>
               <div style={{fontSize:24,fontWeight:900,color:C.text}}>{val}</div>
               <div style={{fontSize:11,color:C.muted}}>{label}</div>
@@ -476,16 +448,27 @@ const CitizenApp = ({userName,userId,onBack}) => {
   const [eta,setEta]=useState(1800);
   const [notifOpen,setNotifOpen]=useState(false);
   const [bookingHistory,setBookingHistory]=useState([]);
+  const [payments,setPayments]=useState<any[]>([]);
+  const [paymentSecret,setPaymentSecret]=useState('');
+  const [paymentBookingId,setPaymentBookingId]=useState('');
+  const [paymentError,setPaymentError]=useState('');
   const [requestError,setRequestError]=useState('');
 
   // Load real booking history
-  useEffect(()=>{
-    if(userId) {
-      getBookings(userId).then(data=>{
-        if(data.length>0) setBookingHistory(data);
-      }).catch(()=>{});
-    }
+  const refreshCustomerData=useCallback(async()=>{
+    if(!userId)return;
+    const [bookings,nextPayments]=await Promise.all([getBookings(userId),getBookingPayments()]);
+    setBookingHistory(bookings);setPayments(nextPayments);
   },[userId]);
+  useEffect(()=>{refreshCustomerData().catch(()=>{});},[refreshCustomerData]);
+
+  const authorizeBooking=async(booking:any)=>{
+    setPaymentError('');
+    if(!stripePromise){setPaymentError('Secure card entry is not configured for this release yet.');return;}
+    try{const result=await createBookingPayment(booking.id);setPaymentSecret(result.clientSecret);setPaymentBookingId(booking.id);}catch(error:any){setPaymentError(error.message||'Payment authorization could not start');}
+  };
+  const cancelSavedBooking=async(bookingId:string)=>{try{await cancelBooking(bookingId);await refreshCustomerData();}catch(error:any){setPaymentError(error.message||'Booking could not be canceled');}};
+  const rateSavedBooking=async(bookingId:string,rating:number)=>{try{await rateBooking(bookingId,rating);await refreshCustomerData();}catch(error:any){setPaymentError(error.message||'Rating could not be saved');}};
 
   useEffect(()=>{
     if(reqStep!=='tracking') return;
@@ -871,13 +854,14 @@ const CitizenApp = ({userName,userId,onBack}) => {
           {/* Recent history preview */}
           <div style={{padding:'20px 20px 0'}}>
             <div style={{fontSize:15,fontWeight:700,color:C.text,marginBottom:12}}>Recent Bookings</div>
-            {CITIZEN_HISTORY.map((h,i)=>(
-              <div key={i} style={{...flex('row','center','space-between'),padding:'12px 0',borderBottom:i<CITIZEN_HISTORY.length-1?`1px solid ${C.border}`:'none'}}>
+            {bookingHistory.length===0&&<div style={{fontSize:12,color:C.muted,padding:'12px 0'}}>No bookings yet.</div>}
+            {bookingHistory.slice(0,3).map((h:any,i)=>(
+              <div key={h.id} style={{...flex('row','center','space-between'),padding:'12px 0',borderBottom:i<Math.min(bookingHistory.length,3)-1?`1px solid ${C.border}`:'none'}}>
                 <div>
-                  <div style={{fontSize:14,fontWeight:600,color:C.text}}>{h.service}</div>
-                  <div style={{fontSize:11,color:C.muted}}>{h.provider} · {h.date}</div>
+                  <div style={{fontSize:14,fontWeight:600,color:C.text}}>{h.service_name}</div>
+                  <div style={{fontSize:11,color:C.muted}}>{String(h.status).replace('_',' ').toUpperCase()} · {new Date(h.created_at).toLocaleDateString()}</div>
                 </div>
-                <div style={{fontSize:14,fontWeight:700,color:C.text}}>${h.cost}</div>
+                <div style={{fontSize:14,fontWeight:700,color:C.text}}>${Number(h.total_price||0).toFixed(2)}</div>
               </div>
             ))}
           </div>
@@ -891,15 +875,18 @@ const CitizenApp = ({userName,userId,onBack}) => {
       {tab==='history'&&(
         <div className="anim-tab" style={{padding:20}}>
           <h2 style={{fontSize:20,fontWeight:800,color:C.text,marginBottom:16}}>Booking History</h2>
-          {CITIZEN_HISTORY.map((h,i)=>(
-            <div key={i} style={{...cardStyle,...flex('row','center','space-between'),marginBottom:12}}>
+          {bookingHistory.length===0&&<div style={{...cardStyle,color:C.muted,textAlign:'center'}}>No bookings yet.</div>}
+          {bookingHistory.map((h:any)=>(
+            <div key={h.id} style={{...cardStyle,...flex('row','center','space-between'),marginBottom:12}}>
               <div>
-                <div style={{fontSize:15,fontWeight:700,color:C.text}}>{h.service}</div>
-                <div style={{fontSize:12,color:C.muted}}>{h.provider} · {h.date}</div>
-                <div style={{fontSize:11,color:C.green,marginTop:4}}>✓ {h.status}</div>
-                <button disabled style={{...btn(C.card2,C.muted,{padding:'8px 12px',fontSize:11,fontWeight:700,marginTop:8,border:`1px solid ${C.border}`,cursor:'not-allowed'})}}>Invoice required</button>
+                <div style={{fontSize:15,fontWeight:700,color:C.text}}>{h.service_name}</div>
+                <div style={{fontSize:12,color:C.muted}}>{new Date(h.created_at).toLocaleString()}</div>
+                <div style={{fontSize:11,color:C.green,marginTop:4}}>{String(h.status).replace('_',' ').toUpperCase()}</div>
+                {['pending','matching','assigned'].includes(h.status)&&<button onClick={()=>cancelSavedBooking(h.id)} style={{...btn('transparent',C.red,{padding:'7px 0',fontSize:11})}}>Cancel booking</button>}
+                {h.status==='completed'&&!h.rating&&<div style={{marginTop:8,fontSize:11,color:C.muted}}>Rate service: {[1,2,3,4,5].map(star=><button key={star} onClick={()=>rateSavedBooking(h.id,star)} aria-label={`${star} stars`} style={{border:0,background:'transparent',padding:2,cursor:'pointer'}}>⭐</button>)}</div>}
+                {h.rating&&<div style={{fontSize:11,color:C.yellow,marginTop:6}}>{'⭐'.repeat(h.rating)}</div>}
               </div>
-              <div style={{fontSize:18,fontWeight:800,color:C.text}}>${h.cost}</div>
+              <div style={{fontSize:18,fontWeight:800,color:C.text}}>${Number(h.total_price||0).toFixed(2)}</div>
             </div>
           ))}
         </div>
@@ -912,24 +899,20 @@ const CitizenApp = ({userName,userId,onBack}) => {
             <div style={{fontSize:11,color:C.muted,marginBottom:4}}>ON CALL Balance</div>
             <div style={{fontSize:36,fontWeight:900,color:C.primary}}>$0.00</div>
           </div>
-          <div style={{...cardStyle,marginBottom:12}}>
-            <div style={{fontSize:14,fontWeight:700,color:C.text,marginBottom:12}}>Payment Methods</div>
-            <div style={{...flex('row','center','space-between'),padding:'12px 0',borderBottom:`1px solid ${C.border}`}}>
-              <span style={{fontSize:14,color:C.gray}}>💳 •••• 4242</span>
-              <span style={{fontSize:12,color:C.green}}>Default</span>
-            </div>
-            <button style={{...btn('transparent',C.primary,{border:'none',padding:'12px 0',fontSize:13,fontWeight:600})}}>+ Add Payment Method</button>
-          </div>
           <div style={cardStyle}>
-            <div style={{fontSize:14,fontWeight:700,color:C.text,marginBottom:12}}>Recent Charges</div>
-            {CITIZEN_HISTORY.map((h,i)=>(
-              <div key={i} style={{...flex('row','center','space-between'),padding:'10px 0',borderBottom:i<CITIZEN_HISTORY.length-1?`1px solid ${C.border}`:'none'}}>
-                <span style={{fontSize:13,color:C.gray}}>{h.service} · {h.date}</span>
-                <span style={{fontSize:13,fontWeight:700,color:C.text}}>${h.cost}</span>
+            <div style={{fontSize:14,fontWeight:700,color:C.text,marginBottom:12}}>Booking payments</div>
+            {bookingHistory.length===0&&<div style={{fontSize:12,color:C.muted}}>No booking payments yet.</div>}
+            {bookingHistory.map((h:any)=>{
+              const payment=payments.find(item=>item.booking_id===h.id);
+              return <div key={h.id} style={{padding:'12px 0',borderBottom:`1px solid ${C.border}`}}>
+                <div style={{...flex('row','center','space-between')}}><span style={{fontSize:13,color:C.gray}}>{h.service_name}</span><span style={{fontSize:13,fontWeight:700,color:C.text}}>${Number(h.total_price||0).toFixed(2)}</span></div>
+                <div style={{fontSize:10,color:payment?.status==='transferred'?C.green:C.muted,marginTop:4}}>{payment?String(payment.status).replace(/_/g,' ').toUpperCase():h.status==='assigned'?'AUTHORIZATION REQUIRED':'WAITING FOR PROVIDER'}</div>
+                {h.status==='assigned'&&!payment&&<button onClick={()=>authorizeBooking(h)} style={{...btn(C.primary,'#fff',{padding:'9px 12px',fontSize:11,marginTop:8})}}>Secure this booking</button>}
               </div>
-            ))}
-            <button disabled style={{...btn(C.card2,C.muted,{width:'100%',marginTop:14,padding:'12px 16px',fontSize:13,cursor:'not-allowed'})}}>Payment opens after a verified invoice</button>
-            <div style={{fontSize:11,color:C.muted,marginTop:8,lineHeight:1.5}}>ON CALL will never ask you to type an arbitrary service amount into a generic payment link.</div>
+            })}
+            {paymentError&&<div style={{fontSize:11,color:C.red,marginTop:10}}>{paymentError}</div>}
+            {paymentSecret&&paymentBookingId&&stripePromise&&<Elements stripe={stripePromise} options={{clientSecret:paymentSecret,appearance:{theme:'stripe'}}}><PaymentAuthorization onComplete={()=>{setPaymentSecret('');setPaymentBookingId('');refreshCustomerData().catch(()=>{});}}/></Elements>}
+            <div style={{fontSize:11,color:C.muted,marginTop:12,lineHeight:1.5}}>Every authorization is tied to one accepted booking. ON CALL never asks for an arbitrary amount.</div>
           </div>
         </div>
       )}
@@ -979,16 +962,20 @@ const ProviderDashboard = ({userName,userId,onBack}) => {
   const [alertTimer,setAlertTimer]=useState(15);
   const [offers,setOffers]=useState<any[]>([]);
   const [providerJobs,setProviderJobs]=useState<any[]>([]);
+  const [providerProfile,setProviderProfile]=useState<any>(null);
+  const [providerPayments,setProviderPayments]=useState<any[]>([]);
   const [portalError,setPortalError]=useState('');
 
   const refreshProviderData=useCallback(async()=>{
     try {
-      const [profile,jobs,nextOffers]=await Promise.all([
-        getProviderProfile(userId), getProviderBookings(), getAvailableOffers()
+      const [profile,jobs,nextOffers,nextPayments]=await Promise.all([
+        getProviderProfile(userId), getProviderBookings(), getAvailableOffers(), getBookingPayments()
       ]);
       setOnDuty(Boolean(profile?.is_available));
+      setProviderProfile(profile);
       setProviderJobs(jobs);
       setOffers(nextOffers);
+      setProviderPayments(nextPayments);
       setPortalError('');
     } catch (error:any) {
       setPortalError(error.message || 'Could not load provider portal');
@@ -1006,13 +993,14 @@ const ProviderDashboard = ({userName,userId,onBack}) => {
     return()=>clearInterval(t);
   },[showAlert]);
 
-  const completedJobs=providerJobs.filter(job=>job.status==='completed');
-  const todayEarnings=completedJobs.filter(job=>new Date(job.completed_at||job.updated_at).toDateString()===new Date().toDateString()).reduce((sum,job)=>sum+Number(job.total_price||0),0);
-  const weekEarnings=completedJobs.filter(job=>Date.now()-new Date(job.completed_at||job.updated_at).getTime()<7*86400000).reduce((sum,job)=>sum+Number(job.total_price||0),0);
+  const paidTransfers=providerPayments.filter(payment=>payment.status==='transferred');
+  const todayEarnings=paidTransfers.filter(payment=>new Date(payment.transferred_at).toDateString()===new Date().toDateString()).reduce((sum,payment)=>sum+Number(payment.provider_amount||0)/100,0);
+  const weekEarnings=paidTransfers.filter(payment=>Date.now()-new Date(payment.transferred_at).getTime()<7*86400000).reduce((sum,payment)=>sum+Number(payment.provider_amount||0)/100,0);
   const currentOffer=offers[0];
   const setDuty=async(next:boolean)=>{try{await toggleAvailability(userId,next);setOnDuty(next);if(next)await refreshProviderData();else setShowAlert(false);}catch(error:any){setPortalError(error.message||'Availability could not be updated');}};
   const takeOffer=async()=>{if(!currentOffer)return;try{await acceptOffer(currentOffer.id);setShowAlert(false);setTab('jobs');await refreshProviderData();}catch(error:any){setPortalError(error.message||'Offer is no longer available');await refreshProviderData();}};
   const advanceJob=async(job:any)=>{const next={assigned:'en_route',en_route:'on_site',on_site:'working',working:'completed'}[job.status];if(!next)return;try{await transitionBooking(job.id,next);await refreshProviderData();}catch(error:any){setPortalError(error.message||'Job status could not be updated');}};
+  const setupPayouts=async()=>{try{await startProviderOnboarding();}catch(error:any){setPortalError(error.message||'Payout setup could not start');}};
 
   return (
     <div style={{minHeight:'100dvh',background:C.bg,paddingBottom:80}}>
@@ -1061,15 +1049,15 @@ const ProviderDashboard = ({userName,userId,onBack}) => {
             <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:12,textAlign:'center'}}>
               <div>
                 <div style={{fontSize:11,color:C.muted}}>Today</div>
-                <div style={{fontSize:24,fontWeight:900,color:C.green}}>${todayEarnings}</div>
+                <div style={{fontSize:24,fontWeight:900,color:C.green}}>${todayEarnings.toFixed(2)}</div>
               </div>
               <div>
                 <div style={{fontSize:11,color:C.muted}}>This Week</div>
-                <div style={{fontSize:24,fontWeight:900,color:C.text}}>${weekEarnings}</div>
+                <div style={{fontSize:24,fontWeight:900,color:C.text}}>${weekEarnings.toFixed(2)}</div>
               </div>
               <div>
                 <div style={{fontSize:11,color:C.muted}}>Rating</div>
-                <div style={{fontSize:24,fontWeight:900,color:C.yellow}}>⭐ 4.9</div>
+                <div style={{fontSize:24,fontWeight:900,color:C.yellow}}>⭐ {Number(providerProfile?.rating||0).toFixed(1)}</div>
               </div>
             </div>
           </div>
@@ -1131,25 +1119,19 @@ const ProviderDashboard = ({userName,userId,onBack}) => {
           <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12,marginBottom:24}}>
             <div style={{...cardStyle,textAlign:'center'}}>
               <div style={{fontSize:11,color:C.muted}}>Today</div>
-              <div style={{fontSize:32,fontWeight:900,color:C.green}}>${todayEarnings}</div>
+              <div style={{fontSize:32,fontWeight:900,color:C.green}}>${todayEarnings.toFixed(2)}</div>
             </div>
             <div style={{...cardStyle,textAlign:'center'}}>
               <div style={{fontSize:11,color:C.muted}}>This Week</div>
-              <div style={{fontSize:32,fontWeight:900,color:C.text}}>${weekEarnings}</div>
+              <div style={{fontSize:32,fontWeight:900,color:C.text}}>${weekEarnings.toFixed(2)}</div>
             </div>
           </div>
-          <h3 style={{fontSize:16,fontWeight:700,color:C.text,marginBottom:12}}>Payout Breakdown</h3>
+          <h3 style={{fontSize:16,fontWeight:700,color:C.text,marginBottom:12}}>Payout readiness</h3>
           <div style={cardStyle}>
-            {[['Base earnings','$960.00'],['Tips','$125.00'],['Bonuses','$55.00'],['Platform fee','-$96.00']].map(([label,val])=>(
-              <div key={label} style={{...flex('row','center','space-between'),padding:'10px 0',borderBottom:`1px solid ${C.border}`}}>
-                <span style={{fontSize:14,color:C.gray}}>{label}</span>
-                <span style={{fontSize:14,fontWeight:700,color:val.startsWith('-')?C.red:C.text}}>{val}</span>
-              </div>
-            ))}
-            <div style={{...flex('row','center','space-between'),padding:'12px 0 0'}}>
-              <span style={{fontSize:16,fontWeight:800,color:C.text}}>Net Payout</span>
-              <span style={{fontSize:20,fontWeight:900,color:C.green}}>$1,044.00</span>
-            </div>
+            <div style={{fontSize:14,fontWeight:800,color:providerProfile?.stripe_onboarding_complete?C.green:C.orange}}>{providerProfile?.stripe_onboarding_complete?'Stripe payouts ready':'Payout setup required'}</div>
+            <div style={{fontSize:11,color:C.muted,lineHeight:1.6,marginTop:6}}>{providerProfile?.stripe_onboarding_complete?'Completed booking payments transfer to your connected Stripe account.':'Complete identity and bank verification with Stripe before accepting paid work.'}</div>
+            {!providerProfile?.stripe_onboarding_complete&&<button onClick={setupPayouts} style={{...btn(C.primary,'#fff',{width:'100%',marginTop:14,padding:'12px 16px',fontSize:13})}}>Set up secure payouts</button>}
+            <div style={{marginTop:16,paddingTop:14,borderTop:`1px solid ${C.border}`,fontSize:12,color:C.gray}}>{paidTransfers.length} completed transfer{paidTransfers.length===1?'':'s'} recorded</div>
           </div>
         </div>
       )}
@@ -1158,7 +1140,7 @@ const ProviderDashboard = ({userName,userId,onBack}) => {
         <div className="anim-tab" style={{padding:20,...flex('column','center','center'),minHeight:'60vh'}}>
           <div style={{width:80,height:80,borderRadius:20,background:`${C.green}12`,...flex('row','center','center'),fontSize:36,marginBottom:16}}>🛠️</div>
           <div style={{fontSize:18,fontWeight:700,color:C.text,marginBottom:4}}>{userName || 'Provider'}</div>
-          <div style={{fontSize:13,color:C.green,marginBottom:24}}>⭐ 4.9 Rating · 312 Jobs</div>
+          <div style={{fontSize:13,color:C.green,marginBottom:24}}>⭐ {Number(providerProfile?.rating||0).toFixed(1)} Rating · {Number(providerProfile?.total_jobs||0)} Jobs</div>
           {['My Profile','Skills & Certifications','Documents','Payout Settings','Help & Support'].map(item=>(
             <div key={item} style={{...cardStyle,width:'100%',marginBottom:8,...flex('row','center','space-between'),padding:'16px 20px',cursor:'pointer'}}>
               <span style={{fontSize:14,color:C.text}}>{item}</span>

@@ -14,14 +14,19 @@ Brand: ON CALL (kept separate from S.O.S. and all other KHG brands)
 - Provider transitions are server-enforced: assigned → en route → on site → working → completed.
 - Customer cancellation and ratings use ownership-checked server functions.
 - Provider applications are validated, rate-limited by email, stored in a backend-only RLS table, and forwarded to automation from an Edge Function.
-- The generic arbitrary-amount Stripe payment button is disabled until booking-specific invoices are implemented.
+- Booking-specific Stripe Connect infrastructure is deployed: manual authorization, completion-gated capture, separate provider transfer, cancellation, refunds/disputes status, signed webhook processing, and event idempotency.
+- Customer Wallet now reads real bookings and payment states, offers exact-price card authorization only after provider acceptance, and supports eligible cancellation and post-completion ratings.
+- Provider earnings now use recorded transfers rather than simulated totals; Connect onboarding and payout readiness are wired to the approved provider profile.
+- Fabricated booking history, card details, payout totals, ratings, testimonials, and performance claims were removed from the interface.
 - Production web build passes.
 - Production dependency audit reports zero known vulnerabilities.
+- Booking/payment tables have RLS enabled; customers and assigned providers can read only their own payment records, while all writes remain server-only.
+- Unauthenticated payment-function call returns HTTP 401 and an invalid webhook signature returns HTTP 400.
 - Invalid provider application test returns HTTP 400 with the expected CORS origin and creates no record.
 
 ## Deliberately not claimed complete
 
-- Booking-specific Stripe authorization/capture/refund/payout is not live. It requires a newly rotated Stripe live key plus a webhook signing secret; the secret previously pasted into chat must not be used.
+- The payment code and database lifecycle are live, but money movement remains intentionally unavailable until a newly rotated Stripe live key, publishable key, and webhook signing secret are configured. The secret previously pasted into chat must not be used.
 - A full authenticated customer/provider production run needs approved test accounts and a test inbox.
 - App Store archive/signing was not performed in this release.
 - The older broad TypeScript file has pre-existing strict-style typing failures, although the production Vite build succeeds.
