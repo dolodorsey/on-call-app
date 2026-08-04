@@ -3,12 +3,15 @@ import React, { Suspense, lazy } from 'react'
 import ReactDOM from 'react-dom/client'
 import './premium-experience.css'
 import './runtime.css'
+import './on-call-marketplace.css'
 
-const App = lazy(() => import('./App'))
+const LegacyApp = lazy(() => import('./App'))
+const OnCallMarketplace = lazy(() => import('./OnCallMarketplace'))
 const ProviderApply = lazy(() => import('../components/ProviderApply'))
 
 const pathname = window.location.pathname.replace(/\/$/, '') || '/'
 const isProviderApplication = pathname === '/apply'
+const isProviderWorkspace = pathname === '/provider'
 
 class RuntimeBoundary extends React.Component<React.PropsWithChildren, { hasError: boolean }> {
   state = { hasError: false }
@@ -39,11 +42,16 @@ class RuntimeBoundary extends React.Component<React.PropsWithChildren, { hasErro
 }
 
 function RouteLoading() {
+  const label = isProviderApplication
+    ? 'Opening provider application'
+    : isProviderWorkspace
+      ? 'Opening provider workspace'
+      : 'Connecting your service marketplace'
   return (
     <div className="oc-route-loading" role="status" aria-live="polite">
       <div className="oc-route-loading__mark">OC</div>
       <div className="oc-route-loading__pulse" />
-      <span>{isProviderApplication ? 'Opening provider application' : 'Connecting your service network'}</span>
+      <span>{label}</span>
     </div>
   )
 }
@@ -56,7 +64,7 @@ ReactDOM.createRoot(rootElement).render(
     <RuntimeBoundary>
       <Suspense fallback={<RouteLoading />}>
         <div className="oc-experience" data-app="on-call">
-          {isProviderApplication ? <ProviderApply /> : <App />}
+          {isProviderApplication ? <ProviderApply /> : isProviderWorkspace ? <LegacyApp /> : <OnCallMarketplace />}
         </div>
       </Suspense>
     </RuntimeBoundary>
