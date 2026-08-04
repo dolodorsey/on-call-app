@@ -1,0 +1,73 @@
+id,category_id,name,description,base_price,pricing_unit,duration_minutes,on_demand_available,scheduled_available,recurring_available,icon_key,sort_order
+deep_clean,home_care,Deep Home Clean,"Detailed whole-home cleaning with kitchen, bathrooms, floors, and surfaces",145,flat,180,True,True,True,cleaning,10
+standard_clean,home_care,Standard Home Clean,Routine cleaning for occupied homes and apartments,95,flat,120,True,True,True,cleaning,20
+move_clean,home_care,Move-In / Move-Out Clean,Empty-home deep cleaning before or after a move,185,starting,240,False,True,False,cleaning,30
+laundry_fold,home_care,Laundry & Fold,"Wash, dry, fold, and organize household laundry",75,starting,120,True,True,True,laundry,40
+home_organization,home_care,Home Organization,"Closet, pantry, garage, and room organization",95,hourly,180,False,True,True,organization,50
+trash_bin,home_care,Trash Bin Cleaning,Sanitize and deodorize residential trash bins,45,flat,45,True,True,True,cleaning,60
+handyman,repairs,Handyman,"General household repairs, mounting, patching, and adjustments",85,hourly,90,True,True,True,tools,10
+plumbing,repairs,Plumbing Help,"Leaks, clogs, fixture replacement, and basic plumbing repairs",125,starting,120,True,True,False,plumbing,20
+electrician,repairs,Electrical Help,"Outlets, switches, light fixtures, and basic electrical diagnostics",125,starting,120,True,True,False,electric,30
+hvac,repairs,HVAC Service,"Heating and cooling diagnostics, filters, and minor repairs",145,starting,120,True,True,True,hvac,40
+appliance,repairs,Appliance Repair,Diagnosis and repair for common household appliances,115,starting,120,False,True,False,appliance,50
+furniture_assembly,repairs,Furniture Assembly,"Assembly for furniture, shelves, desks, and home equipment",75,starting,90,True,True,False,assembly,60
+lawn_cut,outdoor,Lawn Cut & Edge,"Mowing, edging, blowing, and basic yard cleanup",65,starting,75,True,True,True,lawn,10
+landscaping,outdoor,Landscaping,"Planting, beds, mulch, trimming, and landscape refresh",150,starting,180,False,True,True,landscape,20
+pressure_wash,outdoor,Pressure Washing,"Driveways, patios, siding, walkways, and exterior surfaces",125,starting,150,False,True,True,pressure,30
+gutter_clean,outdoor,Gutter Cleaning,Clear debris and downspouts from accessible gutters,110,starting,120,False,True,True,gutter,40
+junk_removal,outdoor,Junk Removal,"Load and remove household, garage, and yard debris",135,starting,120,True,True,False,haul,50
+snow_storm,outdoor,Storm & Seasonal Cleanup,"Post-storm debris, leaves, snow, and seasonal property cleanup",125,starting,150,True,True,True,seasonal,60
+mobile_detail,auto,Mobile Car Detail,Interior and exterior vehicle detailing at your location,135,starting,150,True,True,True,detail,10
+oil_change,auto,Mobile Oil Change,Oil and filter replacement at your location,95,starting,60,True,True,True,auto,20
+battery_replace,auto,Battery Replacement,"Battery delivery, installation, and charging-system check",145,starting,60,True,True,False,battery,30
+tire_help,auto,Tire Help,"Flat repair, spare installation, air, and tire inspection",85,starting,60,True,True,False,tire,40
+diagnostic,auto,Vehicle Diagnostic,Mobile scan and basic mechanical diagnostic report,85,flat,60,True,True,False,diagnostic,50
+car_wash,auto,Mobile Car Wash,"Exterior wash, wheels, windows, and quick interior wipe",55,starting,60,True,True,True,wash,60
+moving_labor,moving,Moving Labor,"Load, unload, rearrange, and move items within a property",110,hourly,120,True,True,False,moving,10
+pickup_delivery,moving,Pickup & Delivery,"Local pickup and delivery for furniture, goods, and supplies",75,starting,90,True,True,True,delivery,20
+courier,moving,Same-Day Courier,"Local documents, packages, and priority item delivery",45,starting,60,True,True,True,courier,30
+haul_dump,moving,Haul Away,Pickup and disposal of unwanted items and debris,125,starting,120,True,True,False,haul,40
+packing,moving,Packing & Unpacking,"Packing, labeling, unpacking, and move organization",85,hourly,180,False,True,False,packing,50
+assembly_delivery,moving,Delivery + Assembly,Deliver and assemble furniture or equipment,125,starting,150,True,True,False,assembly,60
+barber,personal,Mobile Barber,"Haircut, beard grooming, and line-up at your location",75,starting,60,True,True,True,grooming,10
+makeup,personal,Makeup Artist,"Natural, glam, event, and photo-ready makeup service",110,starting,90,True,True,False,beauty,20
+hair_styling,personal,Mobile Hair Styling,"Blowouts, styling, basic installs, and event hair",125,starting,120,True,True,False,hair,30
+nails,personal,Mobile Nail Service,"Manicure, pedicure, gel, and basic nail care",95,starting,120,True,True,True,nails,40
+wardrobe,personal,Wardrobe Styling,"Closet edit, outfit planning, shopping, and event styling",125,hourly,120,False,True,True,style,50
+personal_assistant,personal,Personal Assistant,"Errands, scheduling, shopping, waiting, and day-of support",55,hourly,120,True,True,True,assistant,60
+babysitter,family_pet,Babysitter,Screened in-home childcare for short-term and scheduled needs,28,hourly,180,True,True,True,childcare,10
+elder_companion,family_pet,Elder Companion,"Non-medical companionship, errands, meals, and household support",32,hourly,180,True,True,True,elder,20
+dog_walk,family_pet,Dog Walking,On-demand or recurring neighborhood dog walks,25,flat,30,True,True,True,pet,30
+pet_sitting,family_pet,Pet Sitting,"In-home pet visits, feeding, play, and basic care",45,starting,60,True,True,True,pet,40
+house_sitting,family_pet,House Sitting,"Property check-ins, mail, plants, pets, and home presence",75,daily,240,False,True,True,home,50
+family_runner,family_pet,Family Runner,"Pickup, errands, supplies, and household logistics support",45,hourly,120,True,True,True,runner,60
+bartender,events,Bartender,Professional bartender for private and corporate events,225,starting,240,False,True,False,bar,10
+server_staff,events,Event Servers,"Guest service, food passing, tables, and event support staff",175,starting,240,False,True,False,staff,20
+private_chef,events,Private Chef,"Custom menu, preparation, service, and kitchen cleanup",350,starting,240,False,True,False,chef,30
+event_setup,events,Event Setup & Breakdown,"Tables, décor, staging, loading, setup, and breakdown labor",225,starting,240,False,True,False,event,40
+event_cleanup,events,Event Cleanup Crew,During-event maintenance and post-event cleanup,185,starting,180,False,True,False,cleaning,50
+host_concierge,events,Event Host / Concierge,"Guest check-in, directions, VIP support, and front-of-house presence",195,starting,240,False,True,False,host,60
+admin_assistant,business,Administrative Assistant,"On-site or remote admin, documents, calls, and scheduling",45,hourly,180,False,True,True,admin,10
+brand_ambassador,business,Brand Ambassador,Trained promotional staffing for activations and retail,180,starting,240,False,True,False,brand,20
+merchandising,business,Merchandising Support,"Retail displays, product resets, inventory, and field photos",65,hourly,180,False,True,True,retail,30
+business_runner,business,Business Runner,"Local operational errands, pickups, deposits, and deliveries",55,hourly,120,True,True,True,runner,40
+temp_staff,business,Temporary Staff,"Short-term front desk, warehouse, hospitality, and general labor",175,starting,240,False,True,False,staff,50
+notary,business,Mobile Notary,"Document notarization at your home, office, or venue",65,starting,45,True,True,True,notary,60
+wifi_setup,tech,Wi-Fi Setup & Troubleshooting,"Router setup, coverage testing, mesh systems, and connectivity help",95,starting,90,True,True,False,wifi,10
+tv_mount,tech,TV Mounting,"Secure TV mounting, wire management, and device connection",125,starting,120,True,True,False,tv,20
+smart_home,tech,Smart Home Installation,"Cameras, doorbells, lights, locks, speakers, and automation setup",125,starting,120,True,True,False,smart,30
+computer_help,tech,Computer Help,"Setup, cleanup, troubleshooting, backups, and device migration",85,hourly,90,True,True,True,computer,40
+phone_setup,tech,Phone & Tablet Setup,"Transfers, accounts, apps, accessibility, and device configuration",65,flat,60,True,True,True,device,50
+gaming_setup,tech,Gaming & Entertainment Setup,"Consoles, displays, streaming, sound, and network optimization",95,starting,90,True,True,False,gaming,60
+massage,wellness,Mobile Massage,"Relaxation, deep tissue, sports, and recovery massage",135,starting,90,True,True,True,massage,10
+personal_training,wellness,Personal Training,"One-on-one strength, conditioning, mobility, and accountability",85,hourly,60,True,True,True,fitness,20
+yoga,wellness,Private Yoga,Individual or small-group yoga at your location,95,starting,75,True,True,True,yoga,30
+stretch_recovery,wellness,Assisted Stretch & Recovery,"Mobility, assisted stretch, and post-workout recovery",95,starting,60,True,True,True,recovery,40
+meal_prep,wellness,Healthy Meal Prep,In-home weekly meal preparation based on your preferences,225,starting,240,False,True,True,meal,50
+wellness_companion,wellness,Wellness Companion,"Walks, appointments, habit support, and non-medical wellness assistance",45,hourly,120,True,True,True,wellness,60
+lifestyle_concierge,premium,Lifestyle Concierge,"Complex errands, reservations, sourcing, and personal logistics",125,hourly,180,True,True,True,concierge,10
+home_manager,premium,Home Manager,"Vendor access, household oversight, restocking, and property coordination",95,hourly,180,False,True,True,home,20
+travel_assist,premium,Travel Day Assistance,"Packing, airport support, luggage, errands, and arrival setup",175,starting,180,False,True,False,travel,30
+urgent_request,premium,Urgent Custom Request,High-priority request coordination across the ON CALL network,195,starting,120,True,True,False,urgent,40
+vip_event_support,premium,VIP Event Support,"Dedicated personal concierge for events, nightlife, and guest movement",250,starting,240,False,True,False,vip,50
+estate_concierge,premium,Estate & Property Concierge,"White-glove coordination for residences, estates, and executive households",175,hourly,240,False,True,True,estate,60
