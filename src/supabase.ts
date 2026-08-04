@@ -1,27 +1,41 @@
 import { createClient } from '@supabase/supabase-js';
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://wfkohcwxxsrhcxhepfql.supabase.co';
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Indma29oY3d4eHNyaGN4aGVwZnFsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjczMzMxODUsImV4cCI6MjA4MjkwOTE4NX0.e78lphH3WlRtWP0M9egyvFCLNVW9rgJiOBy9-ZZC9Ao';
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string | undefined;
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined;
+const expectedProjectRef = import.meta.env.VITE_ON_CALL_SUPABASE_PROJECT_REF as string | undefined;
+
+if (!supabaseUrl || !supabaseAnonKey) {
+  throw new Error('ON CALL backend configuration is missing.');
+}
+
+let configuredProjectRef = '';
+try {
+  const hostname = new URL(supabaseUrl).hostname;
+  configuredProjectRef = hostname.endsWith('.supabase.co') ? hostname.split('.')[0] : '';
+} catch {
+  throw new Error('ON CALL backend URL is invalid.');
+}
+
+if (!configuredProjectRef) {
+  throw new Error('ON CALL backend must use a valid Supabase project URL.');
+}
+if (expectedProjectRef && configuredProjectRef !== expectedProjectRef) {
+  throw new Error('ON CALL backend project does not match the approved project reference.');
+}
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
-// n8n webhook base URL
+// Existing CRM/webhook delivery remains non-blocking and isolated from booking success.
 const N8N_BASE = 'https://dorsey.app.n8n.cloud/webhook';
 
-// ── Auth helpers ──
 export const signUp = async (email: string, password: string, fullName: string, role: 'customer' | 'provider') => {
   const { data, error } = await supabase.auth.signUp({
     email,
     password,
-    options: {
-      // The database assigns customer by default. Provider access is granted only
-      // after the separate application and approval process.
-      data: { full_name: fullName },
-    },
+    options: { data: { full_name: fullName } },
   });
   if (error) throw error;
 
-  // Fire n8n webhook for GHL sync (non-blocking)
   fetch(`${N8N_BASE}/on-call-new-user`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -31,7 +45,7 @@ export const signUp = async (email: string, password: string, fullName: string, 
       requested_role: role,
       user_id: data.user?.id || '',
     }),
-  }).catch(() => {}); // silent fail — don't block signup
+  }).catch(() => {});
 
   return data;
 };
@@ -61,9 +75,6 @@ export const resetPassword = async (email: string) => {
   if (error) throw error;
 };
 
-// ── Booking helpers ──
-
-// Lookup oc_users.id from auth.users.id (auth_id)
 export const getOcUserId = async (authId: string): Promise<string | null> => {
   const { data } = await supabase
     .from('oc_users')
@@ -74,7 +85,7 @@ export const getOcUserId = async (authId: string): Promise<string | null> => {
 };
 
 export const createBooking = async (booking: {
-  customer_id: string; // This is auth.users.id — we look up oc_users.id
+  customer_id: string;
   service_id?: string;
   service_name: string;
   category_name: string;
@@ -84,7 +95,6 @@ export const createBooking = async (booking: {
   total_price: number;
   scheduled_at?: string;
 }) => {
-  // oc_bookings.customer_id FK → oc_users.id (not auth.users.id)
   const ocUserId = await getOcUserId(booking.customer_id);
   if (!ocUserId) throw new Error('No oc_users record found for this auth user');
 
@@ -95,17 +105,14 @@ export const createBooking = async (booking: {
     p_lng: booking.lng || null,
     p_scheduled_at: booking.scheduled_at || null,
   });
-
   if (error) throw error;
 
-  // Get customer profile for GHL sync
   const { data: profile } = await supabase
     .from('oc_users')
     .select('full_name, email, ghl_contact_id')
     .eq('id', ocUserId)
     .single();
 
-  // Fire n8n webhook for service request + GHL opportunity (non-blocking)
   fetch(`${N8N_BASE}/on-call-service-request`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -127,7 +134,6 @@ export const createBooking = async (booking: {
 };
 
 export const getBookings = async (authUserId: string) => {
-  // oc_bookings.customer_id references oc_users.id, not auth.users.id
   const ocUserId = await getOcUserId(authUserId);
   if (!ocUserId) return [];
 
@@ -136,7 +142,6 @@ export const getBookings = async (authUserId: string) => {
     .select('*')
     .eq('customer_id', ocUserId)
     .order('created_at', { ascending: false });
-
   if (error) throw error;
   return data || [];
 };
@@ -147,21 +152,18 @@ export const getProfile = async (authUserId: string) => {
     .select('*')
     .eq('auth_id', authUserId)
     .single();
-
   if (error) throw error;
   return data;
 };
 
-// ── Provider helpers ──
 export const applyAsProvider = async (providerData: {
-  user_id: string; // This is auth.users.id
+  user_id: string;
   full_name: string;
   email: string;
   phone?: string;
   skills: string[];
   service_area?: string;
 }) => {
-  // Look up oc_users.id from auth_id
   const ocUserId = await getOcUserId(providerData.user_id);
   if (!ocUserId) throw new Error('No oc_users record found');
 
@@ -174,7 +176,6 @@ export const applyAsProvider = async (providerData: {
       is_available: false,
       background_check_status: 'pending',
     });
-
   if (error) throw error;
 
   fetch(`${N8N_BASE}/on-call-provider-apply`, {
@@ -187,25 +188,21 @@ export const applyAsProvider = async (providerData: {
 export const toggleAvailability = async (authUserId: string, isAvailable: boolean) => {
   const ocUserId = await getOcUserId(authUserId);
   if (!ocUserId) return;
-
   const { error } = await supabase
     .from('oc_provider_profiles')
     .update({ is_available: isAvailable })
     .eq('user_id', ocUserId);
-
   if (error) throw error;
 };
 
 export const getProviderProfile = async (authUserId: string) => {
   const ocUserId = await getOcUserId(authUserId);
   if (!ocUserId) return null;
-
   const { data, error } = await supabase
     .from('oc_provider_profiles')
     .select('*')
     .eq('user_id', ocUserId)
     .single();
-
   if (error) return null;
   return data;
 };
@@ -269,7 +266,11 @@ export const startProviderOnboarding = async () => {
 export const cancelBooking = async (bookingId: string) => {
   const { data, error } = await supabase.rpc('oc_customer_cancel', { p_booking_id: bookingId });
   if (error) throw error;
-  const { data: payment } = await supabase.from('oc_booking_payments').select('id,status').eq('booking_id', bookingId).maybeSingle();
+  const { data: payment } = await supabase
+    .from('oc_booking_payments')
+    .select('id,status')
+    .eq('booking_id', bookingId)
+    .maybeSingle();
   if (payment && !['captured','transferred','partially_refunded','refunded'].includes(payment.status)) {
     const { error: cancelError } = await supabase.functions.invoke('oc-cancel-payment', { body: { bookingId } });
     if (cancelError) throw new Error(`Booking canceled, but payment authorization needs attention: ${cancelError.message}`);
