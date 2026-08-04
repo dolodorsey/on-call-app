@@ -31,6 +31,8 @@ export type MarketplaceBooking = {
   category_name: string | null
   status: string
   address: string | null
+  lat: number | null
+  lng: number | null
   total_price: number
   scheduled_at: string | null
   request_type: string | null
@@ -48,7 +50,6 @@ export type MarketplaceBooking = {
     total_jobs: number | null
     user?: {
       full_name: string | null
-      avatar_url?: string | null
     } | null
   } | null
 }
