@@ -24,6 +24,8 @@ if (expectedProjectRef && configuredProjectRef !== expectedProjectRef) {
 }
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+export const ON_CALL_APP_URL = 'https://oncallallday.com';
+export const ON_CALL_CONFIRM_URL = `${ON_CALL_APP_URL}/auth/confirm`;
 
 // Existing CRM/webhook delivery remains non-blocking and isolated from booking success.
 const N8N_BASE = 'https://dorsey.app.n8n.cloud/webhook';
@@ -32,7 +34,12 @@ export const signUp = async (email: string, password: string, fullName: string, 
   const { data, error } = await supabase.auth.signUp({
     email,
     password,
-    options: { data: { full_name: fullName } },
+    options: {
+      emailRedirectTo: ON_CALL_CONFIRM_URL,
+      // The database assigns customer by default. Provider access is granted only
+      // after the separate application and approval process.
+      data: { full_name: fullName },
+    },
   });
   if (error) throw error;
 
@@ -48,6 +55,11 @@ export const signUp = async (email: string, password: string, fullName: string, 
   }).catch(() => {});
 
   return data;
+};
+
+export const resendConfirmation = async (email: string) => {
+  const { error } = await supabase.auth.resend({ type: 'signup', email, options: { emailRedirectTo: ON_CALL_CONFIRM_URL } });
+  if (error) throw error;
 };
 
 export const signIn = async (email: string, password: string) => {

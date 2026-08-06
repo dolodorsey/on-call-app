@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, type CSSProperties } from 'rea
 import ProviderApply from '../components/ProviderApply';
 import { Elements, PaymentElement, useElements, useStripe } from '@stripe/react-stripe-js';
 import { loadStripe } from '@stripe/stripe-js';
-import { supabase, signUp, signIn, signOut, getSession, createBooking, getBookings, getProfile, resetPassword, getProviderProfile, toggleAvailability, getProviderBookings, getAvailableOffers, acceptOffer, transitionBooking, createBookingPayment, getBookingPayments, startProviderOnboarding, cancelBooking, rateBooking } from './supabase';
+import { supabase, signUp, signIn, signOut, resendConfirmation, getSession, createBooking, getBookings, getProfile, resetPassword, getProviderProfile, toggleAvailability, getProviderBookings, getAvailableOffers, acceptOffer, transitionBooking, createBookingPayment, getBookingPayments, startProviderOnboarding, cancelBooking, rateBooking } from './supabase';
 
 // Haptic feedback for native iOS
 const tap=async(style='Medium')=>{try{const{Haptics,ImpactStyle}=await import('@capacitor/haptics');await Haptics.impact({style:ImpactStyle[style]||ImpactStyle.Medium});}catch{}};
@@ -33,6 +33,14 @@ const SERVICES = [
 ];
 
 const stripePublishableKey = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY as string | undefined;
+
+const AuthConfirm = () => {
+  const [status,setStatus]=useState('Confirming your email…'); const [failed,setFailed]=useState(false); const [email,setEmail]=useState('');
+  useEffect(()=>{(async()=>{const url=new URL(window.location.href);const hash=new URLSearchParams(url.hash.slice(1));const tokenHash=url.searchParams.get('token_hash');const code=url.searchParams.get('code');let error:Error|null=null;
+    if(tokenHash)({error}=await supabase.auth.verifyOtp({token_hash:tokenHash,type:'signup'}));else if(code)({error}=await supabase.auth.exchangeCodeForSession(code));else if(hash.get('access_token')&&hash.get('refresh_token'))({error}=await supabase.auth.setSession({access_token:hash.get('access_token')!,refresh_token:hash.get('refresh_token')!}));else error=new Error('Missing confirmation token');
+    if(error){setFailed(true);setStatus('This confirmation link expired or was already used. Request a fresh email below.');return;}setStatus('Email confirmed. Opening ON CALL…');setTimeout(()=>window.location.replace('/'),900);})()},[]);
+  return <main style={{minHeight:'100vh',display:'grid',placeItems:'center',background:C.bg,padding:24,color:C.text}}><section style={{maxWidth:480,textAlign:'center'}}><h1>ON CALL</h1><p>{status}</p>{failed&&<form onSubmit={async e=>{e.preventDefault();await resendConfirmation(email);setStatus('A fresh email is on the way. Open only the newest link.')}}><input required type="email" value={email} onChange={e=>setEmail(e.target.value)} placeholder="Email address" style={inputStyle}/><button style={{...btn(C.primary),marginTop:12}}>Resend confirmation</button></form>}</section></main>;
+};
 const stripePromise = stripePublishableKey ? loadStripe(stripePublishableKey) : null;
 
 /* ─── validation helpers ─── */
@@ -86,6 +94,7 @@ class OCErrorBoundary extends React.Component<{children:React.ReactNode},{hasErr
 /*               MAIN APP                  */
 /* ════════════════════════════════════════ */
 const App = () => {
+  if (window.location.pathname === '/auth/confirm') return <AuthConfirm/>;
   const providerSignupRequested = new URLSearchParams(window.location.search).get('view') === 'provider-signup';
   const [screen, setScreen] = useState(providerSignupRequested ? 'auth-hero' : 'landing');
   const [fade, setFade] = useState(true);
