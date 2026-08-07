@@ -33,6 +33,8 @@ export type MarketplaceBooking = {
   address: string | null
   lat: number | null
   lng: number | null
+  market_city?: string | null
+  market_state?: string | null
   total_price: number
   scheduled_at: string | null
   request_type: string | null
@@ -52,6 +54,35 @@ export type MarketplaceBooking = {
       full_name: string | null
     } | null
   } | null
+}
+
+type ServiceMarket = { city: string; state: string; aliases: string[] }
+
+const SERVICE_MARKETS: ServiceMarket[] = [
+  { city:'Atlanta', state:'GA', aliases:['atlanta','atl'] },
+  { city:'Charlotte', state:'NC', aliases:['charlotte'] },
+  { city:'Dallas', state:'TX', aliases:['dallas'] },
+  { city:'Houston', state:'TX', aliases:['houston'] },
+  { city:'Las Vegas', state:'NV', aliases:['las vegas','vegas'] },
+  { city:'Los Angeles', state:'CA', aliases:['los angeles'] },
+  { city:'Miami', state:'FL', aliases:['miami'] },
+  { city:'New York', state:'NY', aliases:['new york','nyc'] },
+  { city:'Phoenix', state:'AZ', aliases:['phoenix'] },
+  { city:'Washington', state:'DC', aliases:['washington dc','washington, dc','district of columbia'] },
+]
+
+function normalizeAddress(value: string) {
+  return String(value || '').toLowerCase().replace(/[^a-z0-9]+/g,' ').trim()
+}
+
+export function resolveServiceMarket(address: string): ServiceMarket | null {
+  const normalized = normalizeAddress(address)
+  for (const market of SERVICE_MARKETS) {
+    const cityMatch = market.aliases.some(alias => normalized.includes(normalizeAddress(alias)))
+    const stateMatch = new RegExp(`(^|\\s)${market.state.toLowerCase()}(\\s|$)`).test(normalized)
+    if (cityMatch && stateMatch) return market
+  }
+  return null
 }
 
 export async function loadMarketplaceCatalog() {
@@ -92,9 +123,16 @@ export async function createMarketplaceBooking(input: {
   recurringRule?: string | null
   notes?: string | null
 }) {
-  const { data, error } = await supabase.rpc('oc_request_catalog_service', {
+  const market = resolveServiceMarket(input.address)
+  if (!market) {
+    throw new Error('Enter a full service address including a supported ON CALL city and state, such as Atlanta, GA.')
+  }
+
+  const { data, error } = await supabase.rpc('oc_request_market_service', {
     p_service_id: input.serviceId,
     p_address: input.address,
+    p_market_city: market.city,
+    p_market_state: market.state,
     p_lat: input.latitude ?? null,
     p_lng: input.longitude ?? null,
     p_scheduled_at: input.scheduledAt ?? null,
