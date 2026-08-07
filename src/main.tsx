@@ -4,9 +4,10 @@ import ReactDOM from 'react-dom/client'
 import './premium-experience.css'
 import './runtime.css'
 import './on-call-marketplace.css'
+import './production-integrity.css'
 
 const LegacyApp = lazy(() => import('./App'))
-const OnCallMarketplace = lazy(() => import('./OnCallMarketplace'))
+const OnCallEntry = lazy(() => import('./OnCallEntry'))
 const ProviderApply = lazy(() => import('../components/ProviderApply'))
 
 const pathname = window.location.pathname.replace(/\/$/, '') || '/'
@@ -64,7 +65,7 @@ ReactDOM.createRoot(rootElement).render(
     <RuntimeBoundary>
       <Suspense fallback={<RouteLoading />}>
         <div className="oc-experience" data-app="on-call">
-          {isProviderApplication ? <ProviderApply /> : isProviderWorkspace ? <LegacyApp /> : <OnCallMarketplace />}
+          {isProviderApplication ? <ProviderApply /> : isProviderWorkspace ? <LegacyApp /> : <OnCallEntry />}
         </div>
       </Suspense>
     </RuntimeBoundary>
