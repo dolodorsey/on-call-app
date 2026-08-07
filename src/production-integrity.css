@@ -1,0 +1,11 @@
+.oc2-menu > button:not(.danger){display:none!important}
+
+.oc2-home-copy>p{font-size:0!important}
+.oc2-home-copy>p::after{content:'Request now, schedule later, or set it to repeat where verified provider coverage is active.';font-size:14px;line-height:1.55}
+
+.oc2-popular-grid button small{font-size:0!important}
+.oc2-popular-grid button small::after{content:'Coverage checked at request';font-size:10px;letter-spacing:.04em}
+
+.oc2-auth-notice{margin:12px 0;padding:12px 14px;border:1px solid rgba(37,99,235,.22);border-radius:12px;background:rgba(37,99,235,.08);color:#17365f;font-size:13px;line-height:1.5}
+
+.oc2-service-sheet .oc2-truth,.oc2-truth{line-height:1.55}
