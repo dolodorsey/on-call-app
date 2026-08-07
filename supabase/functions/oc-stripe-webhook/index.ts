@@ -35,6 +35,50 @@ Deno.serve(async (req) => {
 
   const client = admin();
   const object = event.data.object as Record<string, any>;
+  const intentId = object.object === "payment_intent" ? object.id : object.payment_intent;
+
+  // LUXE mobility shares the Stripe account/runtime with ON CALL but keeps an isolated ledger.
+  const { data: luxePayment } = intentId
+    ? await client.from("lm_payments").select("id,ride_id,amount_captured").eq("stripe_payment_intent_id", intentId).maybeSingle()
+    : { data: null };
+  const isLuxe = object?.metadata?.app === "luxe_mobility" || Boolean(luxePayment);
+  if (isLuxe && intentId) {
+    const { error: luxeEventError } = await client.from("lm_payment_events").insert({
+      stripe_event_id: event.id,
+      event_type: event.type,
+      payment_id: luxePayment?.id ?? null,
+      ride_id: luxePayment?.ride_id ?? object?.metadata?.ride_id ?? null,
+      livemode: event.livemode,
+      payload: event,
+    });
+    if (luxeEventError?.code === "23505") {
+      return new Response(JSON.stringify({ received: true, duplicate: true, brand: "LUXE" }), { headers: { "Content-Type": "application/json" } });
+    }
+    if (luxeEventError) return new Response("LUXE event persistence failed", { status: 500 });
+
+    if (event.type === "payment_intent.amount_capturable_updated") {
+      await client.from("lm_payments").update({
+        status: "authorized",
+        amount_authorized: object.amount,
+        authorized_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      }).eq("stripe_payment_intent_id", intentId);
+    } else if (event.type === "payment_intent.succeeded") {
+      await client.from("lm_payments").update({
+        status: "captured",
+        amount_captured: object.amount_received,
+        captured_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      }).eq("stripe_payment_intent_id", intentId);
+    } else if (event.type === "payment_intent.payment_failed") {
+      await client.from("lm_payments").update({ status: "failed", updated_at: new Date().toISOString() }).eq("stripe_payment_intent_id", intentId);
+    } else if (event.type === "payment_intent.canceled") {
+      await client.from("lm_payments").update({ status: "canceled", updated_at: new Date().toISOString() }).eq("stripe_payment_intent_id", intentId);
+    }
+
+    return new Response(JSON.stringify({ received: true, brand: "LUXE" }), { headers: { "Content-Type": "application/json" } });
+  }
+
   if (event.type === "account.updated" && object.id) {
     await client.from("oc_provider_profiles").update({
       stripe_charges_enabled: Boolean(object.charges_enabled),
@@ -44,7 +88,6 @@ Deno.serve(async (req) => {
     }).eq("stripe_account_id", object.id);
   }
 
-  const intentId = object.object === "payment_intent" ? object.id : object.payment_intent;
   const { data: payment } = intentId
     ? await client.from("oc_booking_payments")
         .select("*,provider:oc_provider_profiles!oc_booking_payments_provider_id_fkey(stripe_account_id,stripe_payouts_enabled)")
