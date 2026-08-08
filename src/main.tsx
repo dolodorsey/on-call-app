@@ -9,7 +9,7 @@ import './elite-ui.css'
 import OnCallEntry from './OnCallEntry'
 import OnCallEnhancementHost from './OnCallEnhancementHost'
 
-const LegacyApp = lazy(() => import('./App'))
+const ProviderCommand = lazy(() => import('./ProviderCommand'))
 const ProviderApply = lazy(() => import('../components/ProviderApply'))
 
 const pathname = window.location.pathname.replace(/\/$/, '') || '/'
@@ -45,7 +45,7 @@ class RuntimeBoundary extends React.Component<React.PropsWithChildren, { hasErro
 }
 
 function RouteLoading() {
-  const label = isProviderApplication ? 'Opening provider application' : 'Opening provider workspace'
+  const label = isProviderApplication ? 'Opening provider application' : 'Opening Provider Command'
   return (
     <div className="oc-route-loading" role="status" aria-live="polite">
       <div className="oc-route-loading__mark">OC</div>
@@ -64,7 +64,7 @@ ReactDOM.createRoot(rootElement).render(
       <div className="oc-experience" data-app="on-call">
         {isProviderApplication || isProviderWorkspace ? (
           <Suspense fallback={<RouteLoading />}>
-            {isProviderApplication ? <ProviderApply /> : <LegacyApp />}
+            {isProviderApplication ? <ProviderApply /> : <ProviderCommand />}
           </Suspense>
         ) : (
           <>
