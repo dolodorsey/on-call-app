@@ -5,7 +5,9 @@ import './premium-experience.css'
 import './runtime.css'
 import './on-call-marketplace.css'
 import './production-integrity.css'
+import './elite-ui.css'
 import OnCallEntry from './OnCallEntry'
+import OnCallEnhancementHost from './OnCallEnhancementHost'
 
 const LegacyApp = lazy(() => import('./App'))
 const ProviderApply = lazy(() => import('../components/ProviderApply'))
@@ -65,7 +67,10 @@ ReactDOM.createRoot(rootElement).render(
             {isProviderApplication ? <ProviderApply /> : <LegacyApp />}
           </Suspense>
         ) : (
-          <OnCallEntry />
+          <>
+            <OnCallEntry />
+            <OnCallEnhancementHost />
+          </>
         )}
       </div>
     </RuntimeBoundary>
