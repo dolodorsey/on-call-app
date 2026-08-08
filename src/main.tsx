@@ -12,6 +12,7 @@ import CustomerOperationsHost from './CustomerOperationsHost'
 
 const ProviderCommand = lazy(() => import('./ProviderCommand'))
 const ProviderRealtimeBridge = lazy(() => import('./ProviderRealtimeBridge'))
+const ProviderIssueHost = lazy(() => import('./ProviderIssueHost'))
 const ProviderApply = lazy(() => import('../components/ProviderApply'))
 
 const pathname = window.location.pathname.replace(/\/$/, '') || '/'
@@ -20,31 +21,17 @@ const isProviderWorkspace = pathname === '/provider'
 
 class RuntimeBoundary extends React.Component<React.PropsWithChildren, { hasError: boolean }> {
   state = { hasError: false }
-
   static getDerivedStateFromError() { return { hasError: true } }
   componentDidCatch(error: Error, details: React.ErrorInfo) { console.error('ON CALL runtime failure', error, details) }
-
   render() {
     if (!this.state.hasError) return this.props.children
-    return (
-      <div className="oc-runtime-fallback" role="alert">
-        <div className="oc-runtime-fallback__mark">OC</div>
-        <div className="oc-runtime-fallback__eyebrow">Service connection interrupted</div>
-        <h1>Let’s reconnect ON CALL.</h1>
-        <p>Your account and booking history remain available. Reload to reconnect to the service network.</p>
-        <button type="button" onClick={() => window.location.reload()}>Reload ON CALL</button>
-      </div>
-    )
+    return <div className="oc-runtime-fallback" role="alert"><div className="oc-runtime-fallback__mark">OC</div><div className="oc-runtime-fallback__eyebrow">Service connection interrupted</div><h1>Let’s reconnect ON CALL.</h1><p>Your account and booking history remain available. Reload to reconnect to the service network.</p><button type="button" onClick={() => window.location.reload()}>Reload ON CALL</button></div>
   }
 }
 
 function RouteLoading() {
   const label = isProviderApplication ? 'Opening provider application' : 'Opening Provider Command'
-  return (
-    <div className="oc-route-loading" role="status" aria-live="polite">
-      <div className="oc-route-loading__mark">OC</div><div className="oc-route-loading__pulse"/><span>{label}</span>
-    </div>
-  )
+  return <div className="oc-route-loading" role="status" aria-live="polite"><div className="oc-route-loading__mark">OC</div><div className="oc-route-loading__pulse"/><span>{label}</span></div>
 }
 
 const rootElement = document.getElementById('root')
@@ -56,11 +43,9 @@ ReactDOM.createRoot(rootElement).render(
       <div className="oc-experience" data-app="on-call">
         {isProviderApplication || isProviderWorkspace ? (
           <Suspense fallback={<RouteLoading />}>
-            {isProviderApplication ? <ProviderApply /> : <><ProviderCommand/><ProviderRealtimeBridge/></>}
+            {isProviderApplication ? <ProviderApply /> : <><ProviderCommand/><ProviderRealtimeBridge/><ProviderIssueHost/></>}
           </Suspense>
-        ) : (
-          <><OnCallEntry/><OnCallEnhancementHost/><CustomerOperationsHost/></>
-        )}
+        ) : <><OnCallEntry/><OnCallEnhancementHost/><CustomerOperationsHost/></>}
       </div>
     </RuntimeBoundary>
   </React.StrictMode>,
