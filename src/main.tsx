@@ -10,6 +10,7 @@ import OnCallEntry from './OnCallEntry'
 import OnCallEnhancementHost from './OnCallEnhancementHost'
 
 const ProviderCommand = lazy(() => import('./ProviderCommand'))
+const ProviderRealtimeBridge = lazy(() => import('./ProviderRealtimeBridge'))
 const ProviderApply = lazy(() => import('../components/ProviderApply'))
 
 const pathname = window.location.pathname.replace(/\/$/, '') || '/'
@@ -64,7 +65,14 @@ ReactDOM.createRoot(rootElement).render(
       <div className="oc-experience" data-app="on-call">
         {isProviderApplication || isProviderWorkspace ? (
           <Suspense fallback={<RouteLoading />}>
-            {isProviderApplication ? <ProviderApply /> : <ProviderCommand />}
+            {isProviderApplication ? (
+              <ProviderApply />
+            ) : (
+              <>
+                <ProviderCommand />
+                <ProviderRealtimeBridge />
+              </>
+            )}
           </Suspense>
         ) : (
           <>
