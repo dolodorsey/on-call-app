@@ -5,9 +5,9 @@ import './premium-experience.css'
 import './runtime.css'
 import './on-call-marketplace.css'
 import './production-integrity.css'
+import OnCallEntry from './OnCallEntry'
 
 const LegacyApp = lazy(() => import('./App'))
-const OnCallEntry = lazy(() => import('./OnCallEntry'))
 const ProviderApply = lazy(() => import('../components/ProviderApply'))
 
 const pathname = window.location.pathname.replace(/\/$/, '') || '/'
@@ -43,11 +43,7 @@ class RuntimeBoundary extends React.Component<React.PropsWithChildren, { hasErro
 }
 
 function RouteLoading() {
-  const label = isProviderApplication
-    ? 'Opening provider application'
-    : isProviderWorkspace
-      ? 'Opening provider workspace'
-      : 'Connecting your service marketplace'
+  const label = isProviderApplication ? 'Opening provider application' : 'Opening provider workspace'
   return (
     <div className="oc-route-loading" role="status" aria-live="polite">
       <div className="oc-route-loading__mark">OC</div>
@@ -63,11 +59,15 @@ if (!rootElement) throw new Error('ON CALL root element is missing')
 ReactDOM.createRoot(rootElement).render(
   <React.StrictMode>
     <RuntimeBoundary>
-      <Suspense fallback={<RouteLoading />}>
-        <div className="oc-experience" data-app="on-call">
-          {isProviderApplication ? <ProviderApply /> : isProviderWorkspace ? <LegacyApp /> : <OnCallEntry />}
-        </div>
-      </Suspense>
+      <div className="oc-experience" data-app="on-call">
+        {isProviderApplication || isProviderWorkspace ? (
+          <Suspense fallback={<RouteLoading />}>
+            {isProviderApplication ? <ProviderApply /> : <LegacyApp />}
+          </Suspense>
+        ) : (
+          <OnCallEntry />
+        )}
+      </div>
     </RuntimeBoundary>
   </React.StrictMode>,
 )
