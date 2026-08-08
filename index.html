@@ -25,10 +25,11 @@
       *,*::before,*::after{box-sizing:border-box}
       html{min-height:100%;background:#06101d}
       body{margin:0;min-height:100dvh;background:radial-gradient(circle at 18% 12%,rgba(67,215,255,.17),transparent 28%),radial-gradient(circle at 82% 5%,rgba(22,119,255,.24),transparent 32%),linear-gradient(155deg,#06101d 0%,#0a1c32 48%,#050b14 100%);font-family:'DM Sans',-apple-system,BlinkMacSystemFont,sans-serif;overflow-x:hidden}
-      #root{width:100%;min-height:100dvh;margin:0;position:relative;isolation:isolate;transform:translateZ(0);background:#f8f9fc}
-      .oc2-app,.oc2-auth,.oc2-loading{width:100%;max-width:460px;margin:0 auto;box-shadow:0 0 0 1px rgba(132,187,255,.18),0 32px 100px rgba(0,0,0,.35)}
+      #root{width:100%;min-height:100dvh;margin:0;position:relative;isolation:isolate;transform:translateZ(0);background:#07101d}
+      .oc2-app{width:100%;max-width:none;margin:0;box-shadow:none}
+      .oc2-auth,.oc2-loading{width:100%;max-width:460px;margin:0 auto;box-shadow:0 0 0 1px rgba(132,187,255,.18),0 32px 100px rgba(0,0,0,.35)}
       @media(min-width:521px){.oc2-app,.oc2-auth,.oc2-loading{min-height:100dvh}}
-      @media(max-width:520px){.oc2-app,.oc2-auth,.oc2-loading{max-width:none;box-shadow:none}}
+      @media(max-width:520px){.oc2-auth,.oc2-loading{max-width:none;box-shadow:none}}
     </style>
   </head>
   <body>
