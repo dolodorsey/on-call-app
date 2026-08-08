@@ -1,12 +1,10 @@
 import { createClient } from '@supabase/supabase-js';
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string | undefined;
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined;
-const expectedProjectRef = import.meta.env.VITE_ON_CALL_SUPABASE_PROJECT_REF as string | undefined;
-
-if (!supabaseUrl || !supabaseAnonKey) {
-  throw new Error('ON CALL backend configuration is missing.');
-}
+// ON CALL shares the SOS Supabase project for infrastructure only.
+// Product data remains isolated under oc_* tables/functions.
+const supabaseUrl = 'https://cxdqkjvtpilvouwtbgdy.supabase.co';
+const supabaseAnonKey = 'sb_publishable_x_QDbPwZuhbqB1bd58MLvg_ADSiFODN';
+const expectedProjectRef = 'cxdqkjvtpilvouwtbgdy';
 
 let configuredProjectRef = '';
 try {
@@ -16,11 +14,8 @@ try {
   throw new Error('ON CALL backend URL is invalid.');
 }
 
-if (!configuredProjectRef) {
-  throw new Error('ON CALL backend must use a valid Supabase project URL.');
-}
-if (expectedProjectRef && configuredProjectRef !== expectedProjectRef) {
-  throw new Error('ON CALL backend project does not match the approved project reference.');
+if (!configuredProjectRef || configuredProjectRef !== expectedProjectRef) {
+  throw new Error('ON CALL backend project does not match the approved shared backend.');
 }
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
@@ -36,9 +31,8 @@ export const signUp = async (email: string, password: string, fullName: string, 
     password,
     options: {
       emailRedirectTo: ON_CALL_CONFIRM_URL,
-      // The database assigns customer by default. Provider access is granted only
-      // after the separate application and approval process.
-      data: { full_name: fullName },
+      // Shared Auth tenant; this tag routes profile creation into oc_users only.
+      data: { full_name: fullName, app: 'on_call' },
     },
   });
   if (error) throw error;
@@ -121,7 +115,7 @@ export const createBooking = async (booking: {
 
   const { data: profile } = await supabase
     .from('oc_users')
-    .select('full_name, email, ghl_contact_id')
+    .select('full_name, email')
     .eq('id', ocUserId)
     .single();
 
@@ -133,7 +127,6 @@ export const createBooking = async (booking: {
       customer_id: booking.customer_id,
       customer_email: profile?.email || '',
       customer_name: profile?.full_name || '',
-      ghl_contact_id: profile?.ghl_contact_id || '',
       service_name: booking.service_name,
       category_name: booking.category_name,
       total_price: booking.total_price,
