@@ -50,8 +50,6 @@ export default function CustomerOperationsHost(){
         .on('postgres_changes',{event:'*',schema:'public',table:'oc_bookings',filter:`customer_id=eq.${profile.id}`},()=>{refreshActive().catch(()=>{})}).subscribe()
       notificationChannel=supabase.channel(`oc-customer-notify:${profile.id}`)
         .on('postgres_changes',{event:'INSERT',schema:'public',table:'oc_notifications',filter:`user_id=eq.${profile.id}`},payload=>showAlert(payload.new as Alert)).subscribe()
-      // RLS only releases GPS rows for providers assigned to this customer's active booking.
-      // Listening without a provider filter means a newly assigned provider starts streaming without a page reload.
       locationChannel=supabase.channel(`oc-customer-live-gps:${profile.id}`)
         .on('postgres_changes',{event:'*',schema:'public',table:'oc_provider_locations'},payload=>{const row=payload.new as any;if(row?.lat!=null&&row?.lng!=null)setPosition({lat:Number(row.lat),lng:Number(row.lng),updated_at:row.updated_at})}).subscribe()
     }
@@ -61,6 +59,11 @@ export default function CustomerOperationsHost(){
 
   const distance=useMemo(()=>booking&&position&&booking.lat!=null&&booking.lng!=null?miles(position.lat,position.lng,Number(booking.lat),Number(booking.lng)):null,[booking,position])
   const age=position?.updated_at?Math.max(0,Math.floor((Date.now()-new Date(position.updated_at).getTime())/1000)):null
+  const mapUrl=useMemo(()=>{
+    if(!position)return null
+    const d=.025
+    return `https://www.openstreetmap.org/export/embed.html?bbox=${position.lng-d}%2C${position.lat-d}%2C${position.lng+d}%2C${position.lat+d}&layer=mapnik&marker=${position.lat}%2C${position.lng}`
+  },[position])
   const report=async()=>{
     if(!booking||busy)return
     const type=window.prompt('Issue type: provider_no_show, safety, damage, access_problem, payment, service_quality, or other','other')?.trim();if(!type)return
@@ -76,8 +79,9 @@ export default function CustomerOperationsHost(){
   if(!booking&&!alert&&permission!=='default')return null
   return <>
     {permission==='default'&&<button type="button" onClick={enable} style={{position:'fixed',right:16,bottom:92,zIndex:1180,border:0,borderRadius:999,padding:'10px 13px',background:'#0b1727',color:'#fff',fontSize:10,fontWeight:900,boxShadow:'0 12px 36px rgba(0,0,0,.25)'}}>ENABLE BOOKING ALERTS</button>}
-    {booking&&<section style={{position:'fixed',left:'50%',transform:'translateX(-50%)',bottom:84,zIndex:1150,width:'min(560px,calc(100vw - 28px))',borderRadius:18,padding:'13px 15px',background:'rgba(6,16,29,.94)',color:'#fff',boxShadow:'0 18px 60px rgba(0,0,0,.34)',border:'1px solid rgba(255,255,255,.10)',backdropFilter:'blur(16px)'}}>
-      <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',gap:12}}><div><small style={{fontSize:9,fontWeight:900,letterSpacing:'.12em',color:'#73d9ff'}}>LIVE SERVICE</small><strong style={{display:'block',fontSize:13,marginTop:3}}>{labels[booking.status]||booking.status} · {booking.service_name}</strong><span style={{display:'block',fontSize:11,marginTop:3,color:'rgba(255,255,255,.65)'}}>{distance!=null?`${distance.toFixed(1)} mi from service location · approx. ${Math.max(2,Math.ceil(distance*3))} min`:position?'Provider GPS connected':'Waiting for live provider GPS'}{age!=null?` · updated ${age<5?'now':`${age}s ago`}`:''}</span></div><button type="button" onClick={report} disabled={busy} style={{border:'1px solid rgba(255,255,255,.15)',background:'transparent',color:'#fff',borderRadius:10,padding:'9px 10px',fontSize:10,fontWeight:800,cursor:'pointer'}}>{busy?'SENDING…':'REPORT ISSUE'}</button></div>
+    {booking&&<section style={{position:'fixed',left:'50%',transform:'translateX(-50%)',bottom:84,zIndex:1150,width:'min(620px,calc(100vw - 28px))',borderRadius:20,overflow:'hidden',background:'rgba(6,16,29,.96)',color:'#fff',boxShadow:'0 18px 60px rgba(0,0,0,.34)',border:'1px solid rgba(255,255,255,.10)',backdropFilter:'blur(16px)'}}>
+      {mapUrl&&<div style={{height:150,position:'relative',background:'#0b1727'}}><iframe title="Live ON CALL provider location" src={mapUrl} style={{width:'100%',height:'100%',border:0,filter:'saturate(.75) contrast(1.04)'}}/><div style={{position:'absolute',left:12,top:10,padding:'6px 8px',borderRadius:999,background:'rgba(6,16,29,.88)',fontSize:9,fontWeight:900,letterSpacing:'.08em'}}>LIVE PROVIDER GPS</div></div>}
+      <div style={{padding:'13px 15px'}}><div style={{display:'flex',alignItems:'center',justifyContent:'space-between',gap:12}}><div><small style={{fontSize:9,fontWeight:900,letterSpacing:'.12em',color:'#73d9ff'}}>LIVE SERVICE</small><strong style={{display:'block',fontSize:13,marginTop:3}}>{labels[booking.status]||booking.status} · {booking.service_name}</strong><span style={{display:'block',fontSize:11,marginTop:3,color:'rgba(255,255,255,.65)'}}>{distance!=null?`${distance.toFixed(1)} mi from service location · approx. ${Math.max(2,Math.ceil(distance*3))} min`:position?'Provider GPS connected':'Waiting for live provider GPS'}{age!=null?` · updated ${age<5?'now':`${age}s ago`}`:''}</span></div><button type="button" onClick={report} disabled={busy} style={{border:'1px solid rgba(255,255,255,.15)',background:'transparent',color:'#fff',borderRadius:10,padding:'9px 10px',fontSize:10,fontWeight:800,cursor:'pointer'}}>{busy?'SENDING…':'REPORT ISSUE'}</button></div></div>
     </section>}
     {alert&&<div role="status" aria-live="polite" style={{position:'fixed',right:16,top:78,zIndex:1300,width:'min(360px,calc(100vw - 32px))',padding:'13px 15px',borderRadius:15,background:'#0b1727',color:'#fff',boxShadow:'0 18px 56px rgba(0,0,0,.3)'}}><strong style={{display:'block',fontSize:13}}>{alert.title||'ON CALL update'}</strong><span style={{display:'block',fontSize:11,marginTop:4,color:'rgba(255,255,255,.68)',lineHeight:1.45}}>{alert.body}</span></div>}
   </>
