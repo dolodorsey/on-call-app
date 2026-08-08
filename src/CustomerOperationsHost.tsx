@@ -5,7 +5,6 @@ type Booking={id:string;customer_id:string;provider_id?:string|null;service_name
 type Position={lat:number;lng:number;updated_at?:string|null}
 type Alert={id?:number;title?:string;body?:string;action_url?:string}
 
-const liveStatuses=new Set(['assigned','en_route','on_site','working'])
 const labels:Record<string,string>={assigned:'Provider assigned',en_route:'Provider en route',on_site:'Provider arrived',working:'Service in progress'}
 const miles=(a:number,b:number,c:number,d:number)=>{const r=3958.8,toRad=(v:number)=>v*Math.PI/180;const x=toRad(c-a),y=toRad(d-b);const h=Math.sin(x/2)**2+Math.cos(toRad(a))*Math.cos(toRad(c))*Math.sin(y/2)**2;return 2*r*Math.asin(Math.sqrt(h))}
 
@@ -31,7 +30,7 @@ export default function CustomerOperationsHost(){
     }
 
     const loadPosition=async(providerId?:string|null)=>{
-      if(!providerId){setPosition(null);return}
+      if(!providerId){if(!disposed)setPosition(null);return}
       const{data}=await supabase.from('oc_provider_locations').select('lat,lng,updated_at').eq('provider_id',providerId).eq('is_on_duty',true).order('updated_at',{ascending:false}).limit(1).maybeSingle()
       if(!disposed)setPosition(data?{lat:Number(data.lat),lng:Number(data.lng),updated_at:data.updated_at}:null)
     }
@@ -39,21 +38,22 @@ export default function CustomerOperationsHost(){
     const connect=async()=>{
       const{data:{session}}=await supabase.auth.getSession();if(!session?.user||disposed)return
       const{data:profile}=await supabase.from('oc_users').select('id,role').eq('auth_id',session.user.id).maybeSingle();if(!profile||profile.role==='provider'||disposed)return
-      const{data:rows}=await supabase.from('oc_bookings').select('id,customer_id,provider_id,service_name,status,address,lat,lng').eq('customer_id',profile.id).in('status',['assigned','en_route','on_site','working']).order('created_at',{ascending:false}).limit(1)
-      const current=(rows?.[0]||null) as Booking|null;setBooking(current);await loadPosition(current?.provider_id)
+      const refreshActive=async()=>{
+        const{data:rows}=await supabase.from('oc_bookings').select('id,customer_id,provider_id,service_name,status,address,lat,lng').eq('customer_id',profile.id).in('status',['assigned','en_route','on_site','working']).order('created_at',{ascending:false}).limit(1)
+        const current=(rows?.[0]||null) as Booking|null
+        if(disposed)return
+        setBooking(current);await loadPosition(current?.provider_id)
+      }
+      await refreshActive()
       supabase.realtime.setAuth(session.access_token)
       bookingChannel=supabase.channel(`oc-customer-booking:${profile.id}`)
-        .on('postgres_changes',{event:'*',schema:'public',table:'oc_bookings',filter:`customer_id=eq.${profile.id}`},async payload=>{
-          const row=(payload.new||{}) as Booking
-          if(row?.id&&liveStatuses.has(row.status)){setBooking(row);await loadPosition(row.provider_id)}
-          else if(row?.id===booking?.id&&!liveStatuses.has(row.status)){setBooking(null);setPosition(null)}
-        }).subscribe()
+        .on('postgres_changes',{event:'*',schema:'public',table:'oc_bookings',filter:`customer_id=eq.${profile.id}`},()=>{refreshActive().catch(()=>{})}).subscribe()
       notificationChannel=supabase.channel(`oc-customer-notify:${profile.id}`)
         .on('postgres_changes',{event:'INSERT',schema:'public',table:'oc_notifications',filter:`user_id=eq.${profile.id}`},payload=>showAlert(payload.new as Alert)).subscribe()
-      if(current?.provider_id){
-        locationChannel=supabase.channel(`oc-customer-location:${current.provider_id}`)
-          .on('postgres_changes',{event:'*',schema:'public',table:'oc_provider_locations',filter:`provider_id=eq.${current.provider_id}`},payload=>{const row=payload.new as any;if(row?.lat!=null&&row?.lng!=null)setPosition({lat:Number(row.lat),lng:Number(row.lng),updated_at:row.updated_at})}).subscribe()
-      }
+      // RLS only releases GPS rows for providers assigned to this customer's active booking.
+      // Listening without a provider filter means a newly assigned provider starts streaming without a page reload.
+      locationChannel=supabase.channel(`oc-customer-live-gps:${profile.id}`)
+        .on('postgres_changes',{event:'*',schema:'public',table:'oc_provider_locations'},payload=>{const row=payload.new as any;if(row?.lat!=null&&row?.lng!=null)setPosition({lat:Number(row.lat),lng:Number(row.lng),updated_at:row.updated_at})}).subscribe()
     }
     connect().catch(error=>console.warn('ON CALL customer live tracking fallback unavailable',error))
     return()=>{disposed=true;[bookingChannel,locationChannel,notificationChannel].forEach(ch=>{if(ch)supabase.removeChannel(ch)})}
