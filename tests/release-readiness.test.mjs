@@ -184,7 +184,7 @@ test('production provider verification and dispatch truth are reproducible from 
   const ledger = read('supabase/migrations/20260809054048_on_call_provider_verification_ledger.sql')
   const bridge = read('supabase/migrations/20260809054134_on_call_verification_dispatch_bridge.sql')
   const snapshot = read('supabase/migrations/20260809054202_on_call_truthful_provider_command_snapshot.sql')
-  const indexes = read('supabase/migrations/20260809060000_add_on_call_marketplace_fk_indexes.sql')
+  const indexes = read('supabase/migrations/20260809054601_add_on_call_marketplace_fk_indexes.sql')
 
   assert.match(ledger, /oc_provider_verification_checks/)
   assert.match(ledger, /oc_application_service_matches/)
