@@ -21,6 +21,37 @@ if (!configuredProjectRef || configuredProjectRef !== expectedProjectRef) {
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 export const ON_CALL_APP_URL = 'https://oncallallday.com';
 export const ON_CALL_CONFIRM_URL = `${ON_CALL_APP_URL}/auth/confirm`;
+export type MarketplacePaymentsHealth = {
+  ready: boolean;
+  stripe_server_credential: boolean;
+  webhook_signature_secret: boolean;
+  payments: string;
+  webhooks: string;
+  message: string;
+};
+
+let paymentHealthCache: { value: MarketplacePaymentsHealth; checkedAt: number } | null = null;
+export const getMarketplacePaymentsHealth = async (force = false): Promise<MarketplacePaymentsHealth> => {
+  if (!force && paymentHealthCache && Date.now() - paymentHealthCache.checkedAt < 30_000) return paymentHealthCache.value;
+  const response = await fetch(`${supabaseUrl}/functions/v1/marketplace-payments-health`, { headers: { apikey: supabaseAnonKey }, cache: 'no-store' });
+  const data = await response.json().catch(() => ({})) as Partial<MarketplacePaymentsHealth>;
+  const value: MarketplacePaymentsHealth = {
+    ready: Boolean(data.ready),
+    stripe_server_credential: Boolean(data.stripe_server_credential),
+    webhook_signature_secret: Boolean(data.webhook_signature_secret),
+    payments: String(data.payments || 'unavailable'),
+    webhooks: String(data.webhooks || 'unavailable'),
+    message: String(data.message || 'ON CALL payment runtime is not ready.'),
+  };
+  paymentHealthCache = { value, checkedAt: Date.now() };
+  return value;
+};
+
+export const assertMarketplacePaymentsReady = async () => {
+  const health = await getMarketplacePaymentsHealth(true);
+  if (!health.ready) throw new Error('ON CALL payments are temporarily unavailable while secure Stripe server credentials are being restored. No charge was attempted.');
+  return health;
+};
 
 export const signUp = async (email: string, password: string, fullName: string, role: 'customer' | 'provider') => {
   const { data, error } = await supabase.auth.signUp({
@@ -109,6 +140,7 @@ export const acceptOffer = async (bookingId: string) => {
 
 export const transitionBooking = async (bookingId: string, status: string) => {
   if (status === 'completed') {
+    await assertMarketplacePaymentsReady();
     const { data, error } = await supabase.functions.invoke('oc-complete-service', { body: { bookingId } });
     if (error) throw error; if (!data?.ok) throw new Error(data?.error || 'Service completion needs attention'); return data.booking;
   }
@@ -117,6 +149,7 @@ export const transitionBooking = async (bookingId: string, status: string) => {
 };
 
 export const createBookingPayment = async (bookingId: string) => {
+  await assertMarketplacePaymentsReady();
   const { data, error } = await supabase.functions.invoke('oc-create-payment', { body: { bookingId } });
   if (error) throw error; return data as { paymentId: string; clientSecret: string; status: string };
 };
@@ -127,6 +160,7 @@ export const getBookingPayments = async () => {
 };
 
 export const startProviderOnboarding = async () => {
+  await assertMarketplacePaymentsReady();
   const { data, error } = await supabase.functions.invoke('oc-connect-onboarding', { body: {} });
   if (error) throw error; if (!data?.url) throw new Error('Payout onboarding link was not created'); window.location.assign(data.url);
 };
@@ -134,6 +168,7 @@ export const startProviderOnboarding = async () => {
 export const cancelBooking = async (bookingId: string, reason = 'Customer canceled from app') => {
   const { data: quote, error: quoteError } = await supabase.functions.invoke('oc-cancel-booking', { body: { bookingId, action: 'quote' } });
   if (quoteError) throw quoteError; if (quote?.error) throw new Error(quote.error); if (!quote?.canCancel) throw new Error(quote?.reason || 'Booking cannot be canceled');
+  if (Number(quote.feeAmount || 0) > 0) await assertMarketplacePaymentsReady();
   const { data, error } = await supabase.functions.invoke('oc-cancel-booking', { body: { bookingId, action: 'cancel', expectedFeeAmount: Number(quote.feeAmount || 0), reason } });
   if (error) throw error; if (data?.error) throw new Error(data.error); return data?.booking || data;
 };
