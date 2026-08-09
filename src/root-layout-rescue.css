@@ -48,6 +48,69 @@
     padding: 0 !important;
   }
 
+  /* Desktop must read like a real marketplace, not a scaled phone UI. */
+  .oc2-section-title > span,
+  .oc2-screen-head > span,
+  .oc2-provider-banner > span,
+  .oc2-service-sheet > span,
+  .oc2-payment-sheet > span,
+  .oc2-profile > span {
+    font-size: 10px !important;
+    letter-spacing: .16em !important;
+  }
+
+  .oc2-popular-grid strong,
+  .oc2-category-grid strong,
+  .oc2-service-list strong,
+  .oc2-booking-main strong {
+    font-size: 14px !important;
+    line-height: 1.3 !important;
+  }
+
+  .oc2-popular-grid small,
+  .oc2-category-grid small,
+  .oc2-service-list small,
+  .oc2-booking-main small {
+    font-size: 10px !important;
+    line-height: 1.4 !important;
+  }
+
+  .oc2-service-list p,
+  .oc2-booking-main p,
+  .oc2-empty p,
+  .oc2-provider-banner p,
+  .oc2-screen-head p {
+    font-size: 12px !important;
+    line-height: 1.55 !important;
+  }
+
+  .oc2-service-list em,
+  .oc2-booking-main em,
+  .oc2-popular-grid em {
+    font-size: 20px !important;
+  }
+
+  .oc2-nav button small {
+    font-size: 10px !important;
+    font-weight: 800 !important;
+  }
+
+  .oc2-menu strong {
+    font-size: 13px !important;
+  }
+
+  .oc2-menu small {
+    font-size: 11px !important;
+    line-height: 1.4 !important;
+  }
+
+  .oc2-provider-banner a,
+  .oc2-empty button,
+  .oc2-pay-action,
+  .oc2-cancel {
+    font-size: 11px !important;
+  }
+
   .oc2-tracker {
     width: min(980px, calc(100vw - 170px)) !important;
     max-width: none !important;
@@ -75,6 +138,46 @@
     border-radius: 28px 28px 0 0 !important;
     padding-left: 30px !important;
     padding-right: 30px !important;
+  }
+
+  .oc2-tracker-head small,
+  .oc2-booking-facts small,
+  .oc2-progress small {
+    font-size: 9px !important;
+  }
+
+  .oc2-tracker-head p,
+  .oc2-booking-facts strong,
+  .oc2-provider-card strong,
+  .oc2-provider-card em {
+    font-size: 12px !important;
+    line-height: 1.45 !important;
+  }
+
+  /* Provider Command should remain dense, but not micro-sized. */
+  .ocp-desktop-nav > button span,
+  .ocp-screen-head p,
+  .ocp-hero-copy p,
+  .ocp-gate-card p {
+    font-size: 12px !important;
+    line-height: 1.55 !important;
+  }
+
+  .ocp-metrics small,
+  .ocp-home-grid small,
+  .ocp-live span,
+  .ocp-job-list span,
+  .ocp-job-list small,
+  .ocp-earning-list span,
+  .ocp-earning-list small {
+    font-size: 10px !important;
+    line-height: 1.45 !important;
+  }
+
+  .ocp-live strong,
+  .ocp-job-list strong,
+  .ocp-earning-list strong {
+    font-size: 13px !important;
   }
 }
 
