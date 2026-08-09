@@ -9,6 +9,7 @@ import './elite-ui.css'
 import OnCallEntry from './OnCallEntry'
 import OnCallEnhancementHost from './OnCallEnhancementHost'
 import CustomerOperationsHost from './CustomerOperationsHost'
+import CustomerCancellationHost from './CustomerCancellationHost'
 
 const ProviderCommand = lazy(() => import('./ProviderCommand'))
 const ProviderRealtimeBridge = lazy(() => import('./ProviderRealtimeBridge'))
@@ -46,7 +47,7 @@ ReactDOM.createRoot(rootElement).render(
           <Suspense fallback={<RouteLoading />}>
             {isProviderApplication ? <ProviderApply /> : <><ProviderCommand/><ProviderRealtimeBridge/><ProviderIssueHost/><ProviderMatchHost/></>}
           </Suspense>
-        ) : <><OnCallEntry/><OnCallEnhancementHost/><CustomerOperationsHost/></>}
+        ) : <><OnCallEntry/><OnCallEnhancementHost/><CustomerOperationsHost/><CustomerCancellationHost/></>}
       </div>
     </RuntimeBoundary>
   </React.StrictMode>,
