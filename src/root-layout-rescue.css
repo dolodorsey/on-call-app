@@ -1,32 +1,17 @@
-/* Final root-layout correction.
-   The premium shell used to style every direct child of .oc-experience as a 460px phone.
-   That unintentionally constrained the signed-in desktop marketplace, Provider Command,
-   provider auth, and root-level operation hosts. Only real app/auth shells should own layout. */
+/* Explicit route-shell sizing. Base typography/theme styles must never impose
+   dimensions on every direct child of .oc-experience. */
 
-.oc-experience > * {
-  max-width: none !important;
-  min-height: 0 !important;
-  margin: 0 !important;
-  overflow: visible !important;
-  background: transparent !important;
-  box-shadow: none !important;
-  border-radius: 0 !important;
-}
-
-.oc-experience > *::before {
-  content: none !important;
-}
-
-/* Customer app shell */
 .oc-experience > .oc2-app {
   width: 100% !important;
   max-width: none !important;
   min-height: 100dvh !important;
+  margin: 0 !important;
   background: var(--oc2-bg, #07101d) !important;
   overflow: hidden !important;
+  box-shadow: none !important;
+  border-radius: 0 !important;
 }
 
-/* Customer auth/loading intentionally stay focused and phone-sized. */
 .oc-experience > .oc2-auth,
 .oc-experience > .oc2-loading {
   width: 100% !important;
@@ -38,7 +23,6 @@
   box-shadow: 0 0 0 1px rgba(132, 187, 255, .18), 0 32px 100px rgba(0,0,0,.35) !important;
 }
 
-/* Provider Command is a desktop-first two-sided operations product. */
 .oc-experience > .ocp-app,
 .oc-experience > .ocp-auth,
 .oc-experience > .ocp-loading,
@@ -47,8 +31,16 @@
   max-width: none !important;
   min-height: 100dvh !important;
   margin: 0 !important;
-  overflow: visible !important;
   background: #07101d !important;
+  box-shadow: none !important;
+  border-radius: 0 !important;
+}
+
+/* Public marketplace and provider application own their own light surfaces. */
+.oc-experience > .oc-entry {
+  width: 100% !important;
+  min-height: 100dvh !important;
+  background: #f5f7fb !important;
 }
 
 @media (min-width: 900px) {
@@ -56,17 +48,6 @@
     padding: 0 !important;
   }
 
-  .oc-experience > .oc2-app,
-  .oc-experience > .ocp-app,
-  .oc-experience > .ocp-auth,
-  .oc-experience > .ocp-loading,
-  .oc-experience > .ocp-gate {
-    border-radius: 0 !important;
-    box-shadow: none !important;
-  }
-
-  /* The booking tracker also carried its own 460px phone cap. On desktop it
-     should behave like the customer-side equivalent of a mobility command map. */
   .oc2-tracker {
     width: min(980px, calc(100vw - 170px)) !important;
     max-width: none !important;
