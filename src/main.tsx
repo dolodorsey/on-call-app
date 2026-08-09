@@ -33,6 +33,8 @@ import ProviderActivationAccessHost from './ProviderActivationAccessHost'
 import MarketplaceOpsAlertsHost from './MarketplaceOpsAlertsHost'
 import InteractionContractHost from './InteractionContractHost'
 import MarketplaceTruthHost from './MarketplaceTruthHost'
+import LegalPage from './LegalPage'
+import LegalLinksHost from './LegalLinksHost'
 
 const ProviderCommand = lazy(() => import('./ProviderCommand'))
 const ProviderRealtimeBridge = lazy(() => import('./ProviderRealtimeBridge'))
@@ -48,6 +50,8 @@ const isProviderApplication = pathname === '/apply'
 const isProviderActivation = pathname === '/provider/activate'
 const isProviderWorkspace = pathname === '/provider'
 const isOperationsWorkspace = pathname === '/ops'
+const isPrivacy = pathname === '/privacy'
+const isTerms = pathname === '/terms'
 
 class RuntimeBoundary extends React.Component<React.PropsWithChildren, { hasError: boolean }> {
   state = { hasError: false }
@@ -71,23 +75,26 @@ ReactDOM.createRoot(rootElement).render(
   <React.StrictMode>
     <RuntimeBoundary>
       <div className="oc-experience" data-app="on-call">
-        <InteractionContractHost/>
-        <MarketplaceTruthHost/>
-        {isOperationsWorkspace ? (
-          <Suspense fallback={<RouteLoading/>}><><OperationsCommand/><ProviderVerificationOpsHost/><MarketplaceOpsAlertsHost/></></Suspense>
-        ) : <>
-          <PaymentReadinessHost/>
-          <BookingChatHost/>
-          <PushRegistrationHost/>
-          <AccountRecoveryHost/>
-          <AccountDeletionHost/>
-          {isProviderActivation ? (
-            <ProviderAccountActivation/>
-          ) : isProviderApplication || isProviderWorkspace ? (
-            <Suspense fallback={<RouteLoading />}>
-              {isProviderApplication ? <ProviderApply /> : <><ProviderActivationAccessHost/><ProviderCommand/><ProviderVerificationReadinessHost/><ProviderRealtimeBridge/><ProviderIssueHost/><ProviderMatchHost/><ProviderNoShowHost/><ProviderReliabilityHost/></>}
-            </Suspense>
-          ) : <><OnCallEntry/><CustomerRealtimeBridge/><OnCallEnhancementHost/><CustomerOperationsHost/><CustomerCancellationHost/><CustomerSettlementReviewHost/><CustomerProfileToolsHost/></>}
+        {isPrivacy ? <LegalPage kind="privacy"/> : isTerms ? <LegalPage kind="terms"/> : <>
+          <InteractionContractHost/>
+          <MarketplaceTruthHost/>
+          <LegalLinksHost/>
+          {isOperationsWorkspace ? (
+            <Suspense fallback={<RouteLoading/>}><><OperationsCommand/><ProviderVerificationOpsHost/><MarketplaceOpsAlertsHost/></></Suspense>
+          ) : <>
+            <PaymentReadinessHost/>
+            <BookingChatHost/>
+            <PushRegistrationHost/>
+            <AccountRecoveryHost/>
+            <AccountDeletionHost/>
+            {isProviderActivation ? (
+              <ProviderAccountActivation/>
+            ) : isProviderApplication || isProviderWorkspace ? (
+              <Suspense fallback={<RouteLoading />}>
+                {isProviderApplication ? <ProviderApply /> : <><ProviderActivationAccessHost/><ProviderCommand/><ProviderVerificationReadinessHost/><ProviderRealtimeBridge/><ProviderIssueHost/><ProviderMatchHost/><ProviderNoShowHost/><ProviderReliabilityHost/></>}
+              </Suspense>
+            ) : <><OnCallEntry/><CustomerRealtimeBridge/><OnCallEnhancementHost/><CustomerOperationsHost/><CustomerCancellationHost/><CustomerSettlementReviewHost/><CustomerProfileToolsHost/></>}
+          </>}
         </>}
       </div>
     </RuntimeBoundary>
