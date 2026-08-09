@@ -5,7 +5,7 @@ import test from 'node:test'
 const read = path => fs.readFileSync(new URL(`../${path}`, import.meta.url), 'utf8')
 
 const activeClientFiles = [
-  'src/main.tsx','src/supabase.ts','src/marketplace-client.ts','src/OnCallEntry.tsx','src/OnCallMarketplace.tsx','src/ProviderCommand.tsx','src/ProviderMatchHost.tsx','src/ProviderNoShowHost.tsx','src/CustomerProfileToolsHost.tsx','src/CustomerRealtimeBridge.tsx','src/OperationsCommand.tsx',
+  'src/main.tsx','src/supabase.ts','src/marketplace-client.ts','src/OnCallEntry.tsx','src/OnCallMarketplace.tsx','src/ProviderCommand.tsx','src/ProviderMatchHost.tsx','src/ProviderNoShowHost.tsx','src/CustomerProfileToolsHost.tsx','src/CustomerRealtimeBridge.tsx','src/OperationsCommand.tsx','src/PushRegistrationHost.tsx',
 ]
 
 test('ON CALL is pinned to the approved shared backend while keeping the oc namespace', () => {
@@ -120,6 +120,21 @@ test('authenticated marketplace clients can never TRUNCATE product tables', () =
   assert.match(migration,/revoke truncate on table %s\.%s from authenticated/)
   assert.match(migration,/oc\\_%/)
   assert.match(migration,/sos\\_%/)
+})
+
+test('background provider offers have service-worker push registration and database alert generation', () => {
+  const main=read('src/main.tsx'), host=read('src/PushRegistrationHost.tsx'), worker=read('public/marketplace-sw.js'), migration=read('supabase/migrations/20260809043000_add_on_call_provider_offer_push_trigger.sql')
+  assert.match(main,/PushRegistrationHost/)
+  assert.match(host,/marketplace-push-config/)
+  assert.match(host,/marketplace_register_push_subscription/)
+  assert.match(host,/p_app:'on_call'/)
+  assert.match(host,/serviceWorker\.register\('\/marketplace-sw\.js'/)
+  assert.match(worker,/addEventListener\('push'/)
+  assert.match(worker,/showNotification/)
+  assert.match(worker,/notificationclick/)
+  assert.match(migration,/after insert on public\.oc_booking_offers/)
+  assert.match(migration,/provider_offer/)
+  assert.match(migration,/'push'/)
 })
 
 test('desktop layout cannot regress to a universal 460px root shell', () => {
