@@ -66,30 +66,9 @@ body {
   background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 180 180' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.82' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
 }
 
-.oc-experience > * {
-  position: relative;
-  width: 100%;
-  max-width: 460px;
-  min-height: 100dvh;
-  margin: 0 auto;
-  overflow: hidden;
-  background:
-    radial-gradient(circle at 80% 0%, rgba(22, 119, 255, 0.08), transparent 28%),
-    linear-gradient(180deg, #fbfdff 0%, #f3f7fc 100%);
-  box-shadow: 0 0 0 1px rgba(132, 187, 255, 0.22), 0 32px 100px rgba(0, 0, 0, 0.48);
-}
-
-.oc-experience > *::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 3px;
-  z-index: 300;
-  background: linear-gradient(90deg, transparent, var(--oc-cyan), var(--oc-blue), transparent);
-  box-shadow: 0 0 24px rgba(67, 215, 255, 0.5);
-}
+/* Route components own their own dimensions and backgrounds. Never force every
+   direct child into a phone-sized shell: root-level operation hosts, the public
+   marketplace, provider application, and Provider Command are separate surfaces. */
 
 .oc-experience :where(button, input, textarea, select) {
   font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif !important;
@@ -136,7 +115,6 @@ body {
   box-shadow: 0 0 0 4px rgba(22, 119, 255, 0.1), 0 12px 28px rgba(13, 54, 102, 0.08) !important;
 }
 
-/* Upgrade card surfaces without flattening the app's role-based UI. */
 .oc-experience [style*='border-radius: 20px'],
 .oc-experience [style*='border-radius:20px'],
 .oc-experience [style*='border-radius: 16px'],
@@ -151,7 +129,6 @@ body {
   box-shadow: 0 14px 44px rgba(10, 34, 66, 0.08) !important;
 }
 
-/* Premium mobile command dock. */
 .oc-experience [style*='position: fixed'][style*='bottom: 0'],
 .oc-experience [style*='position:fixed'][style*='bottom:0'] {
   background: rgba(7, 16, 29, 0.94) !important;
@@ -166,7 +143,6 @@ body {
   color: rgba(255, 255, 255, 0.72) !important;
 }
 
-/* Reduce generic emoji dominance while retaining recognizable service cues. */
 .oc-experience [style*='font-size: 32px'],
 .oc-experience [style*='font-size:32px'] {
   filter: saturate(0.68) contrast(1.08);
@@ -175,24 +151,6 @@ body {
 .oc-experience ::selection {
   color: #fff;
   background: var(--oc-blue);
-}
-
-@media (min-width: 521px) {
-  body {
-    padding: 24px;
-  }
-
-  .oc-experience > * {
-    min-height: calc(100dvh - 48px);
-    border-radius: 32px;
-  }
-}
-
-@media (max-width: 520px) {
-  .oc-experience > * {
-    max-width: none;
-    box-shadow: none;
-  }
 }
 
 @media (prefers-reduced-motion: reduce) {
