@@ -10,6 +10,7 @@ import OnCallEntry from './OnCallEntry'
 import OnCallEnhancementHost from './OnCallEnhancementHost'
 import CustomerOperationsHost from './CustomerOperationsHost'
 import CustomerCancellationHost from './CustomerCancellationHost'
+import CustomerSettlementReviewHost from './CustomerSettlementReviewHost'
 import PaymentReadinessHost from './PaymentReadinessHost'
 
 const ProviderCommand = lazy(() => import('./ProviderCommand'))
@@ -50,7 +51,7 @@ ReactDOM.createRoot(rootElement).render(
           <Suspense fallback={<RouteLoading />}>
             {isProviderApplication ? <ProviderApply /> : <><ProviderCommand/><ProviderRealtimeBridge/><ProviderIssueHost/><ProviderMatchHost/><ProviderNoShowHost/></>}
           </Suspense>
-        ) : <><OnCallEntry/><OnCallEnhancementHost/><CustomerOperationsHost/><CustomerCancellationHost/></>}
+        ) : <><OnCallEntry/><OnCallEnhancementHost/><CustomerOperationsHost/><CustomerCancellationHost/><CustomerSettlementReviewHost/></>}
       </div>
     </RuntimeBoundary>
   </React.StrictMode>,
