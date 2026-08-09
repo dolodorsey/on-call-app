@@ -1,0 +1,19 @@
+import { useEffect,useState } from 'react'
+import { supabase } from './supabase'
+
+type Booking={id:string;service_name:string;status:string;cancellation_fee?:number|null;cancellation_reason?:string|null;cancelled_by?:string|null;canceled_at?:string|null;cancelled_at?:string|null}
+
+export default function CustomerSettlementReviewHost(){
+ const[booking,setBooking]=useState<Booking|null>(null),[busy,setBusy]=useState(false),[notice,setNotice]=useState(''),[dismissed,setDismissed]=useState<string>(()=>localStorage.getItem('oc_fee_review_dismissed')||'')
+ useEffect(()=>{let disposed=false;(async()=>{const{data:{session}}=await supabase.auth.getSession();if(!session?.user)return;const{data:u}=await supabase.from('oc_users').select('id,role').eq('auth_id',session.user.id).maybeSingle();if(!u||u.role==='provider')return;const cutoff=new Date(Date.now()-14*86400000).toISOString();const{data:rows}=await supabase.from('oc_bookings').select('id,service_name,status,cancellation_fee,cancellation_reason,cancelled_by,canceled_at,cancelled_at').eq('customer_id',u.id).eq('status','canceled').gt('cancellation_fee',0).gte('updated_at',cutoff).order('updated_at',{ascending:false}).limit(1);if(!disposed)setBooking((rows?.[0]||null) as Booking|null)})().catch(()=>{});return()=>{disposed=true}},[])
+ const review=async()=>{if(!booking||busy)return;const description=window.prompt('Tell ON CALL why this cancellation/no-show fee should be reviewed:')?.trim();if(!description)return;setBusy(true);setNotice('');const{data,error}=await supabase.rpc('oc_report_booking_issue',{p_booking_id:booking.id,p_issue_type:'payment',p_description:`Cancellation fee review: ${description}`,p_severity:'low'});setBusy(false);if(error)setNotice(error.message);else{const row=Array.isArray(data)?data[0]:data;setNotice(row?.incident_number?`Review ${row.incident_number} opened.`:'Payment review opened.');setTimeout(()=>setNotice(''),5000)}}
+ const dismiss=()=>{if(!booking)return;localStorage.setItem('oc_fee_review_dismissed',booking.id);setDismissed(booking.id)}
+ if(!booking||dismissed===booking.id)return notice?<div style={{position:'fixed',right:16,bottom:92,zIndex:1200,padding:'11px 14px',borderRadius:13,background:'#111827',color:'#fff',fontSize:11}}>{notice}</div>:null
+ const fee=Number(booking.cancellation_fee||0);const isNoShow=booking.cancelled_by==='customer_no_show'||booking.cancellation_reason?.includes('no-show')
+ return <section style={{position:'fixed',right:16,bottom:92,zIndex:1190,width:'min(390px,calc(100vw - 32px))',padding:15,borderRadius:18,background:'rgba(9,20,34,.97)',color:'#fff',border:'1px solid rgba(255,183,71,.22)',boxShadow:'0 18px 60px rgba(0,0,0,.34)',backdropFilter:'blur(16px)'}}>
+  <div style={{display:'flex',justifyContent:'space-between',gap:10}}><div><small style={{fontSize:9,fontWeight:900,letterSpacing:'.12em',color:'#ffca78'}}>{isNoShow?'NO-SHOW FEE':'CANCELLATION FEE'}</small><strong style={{display:'block',fontSize:15,marginTop:4}}>{booking.service_name}</strong><span style={{display:'block',fontSize:11,color:'rgba(255,255,255,.64)',marginTop:3}}>${fee.toFixed(2)} · {booking.cancellation_reason||'Applied under the live cancellation policy'}</span></div><button onClick={dismiss} aria-label="Dismiss" style={{border:0,background:'transparent',color:'#8fa0b4',fontSize:18}}>×</button></div>
+  <p style={{fontSize:11,lineHeight:1.45,color:'rgba(255,255,255,.7)',margin:'11px 0'}}>If the timing, arrival, or fee is incorrect, open a payment review. The booking and payment record stay attached to the case.</p>
+  <button onClick={review} disabled={busy} style={{width:'100%',border:'1px solid rgba(255,255,255,.14)',borderRadius:12,padding:11,background:'#17283b',color:'#fff',fontWeight:900,fontSize:10}}>{busy?'OPENING REVIEW…':'REVIEW THIS FEE'}</button>
+  {notice&&<div style={{marginTop:8,fontSize:11,color:'#b9f6dc'}}>{notice}</div>}
+ </section>
+}
