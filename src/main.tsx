@@ -9,6 +9,7 @@ import './elite-ui.css'
 import './customer-profile-tools.css'
 import './operations-command.css'
 import './provider-verification-ops.css'
+import './provider-verification-readiness.css'
 import './root-layout-rescue.css'
 import OnCallEntry from './OnCallEntry'
 import OnCallEnhancementHost from './OnCallEnhancementHost'
@@ -21,6 +22,7 @@ import PushRegistrationHost from './PushRegistrationHost'
 import PaymentReadinessHost from './PaymentReadinessHost'
 import BookingChatHost from './BookingChatHost'
 import ProviderVerificationOpsHost from './ProviderVerificationOpsHost'
+import ProviderVerificationReadinessHost from './ProviderVerificationReadinessHost'
 
 const ProviderCommand = lazy(() => import('./ProviderCommand'))
 const ProviderRealtimeBridge = lazy(() => import('./ProviderRealtimeBridge'))
@@ -66,7 +68,7 @@ ReactDOM.createRoot(rootElement).render(
           <PushRegistrationHost/>
           {isProviderApplication || isProviderWorkspace ? (
             <Suspense fallback={<RouteLoading />}>
-              {isProviderApplication ? <ProviderApply /> : <><ProviderCommand/><ProviderRealtimeBridge/><ProviderIssueHost/><ProviderMatchHost/><ProviderNoShowHost/><ProviderReliabilityHost/></>}
+              {isProviderApplication ? <ProviderApply /> : <><ProviderCommand/><ProviderVerificationReadinessHost/><ProviderRealtimeBridge/><ProviderIssueHost/><ProviderMatchHost/><ProviderNoShowHost/><ProviderReliabilityHost/></>}
             </Suspense>
           ) : <><OnCallEntry/><CustomerRealtimeBridge/><OnCallEnhancementHost/><CustomerOperationsHost/><CustomerCancellationHost/><CustomerSettlementReviewHost/><CustomerProfileToolsHost/></>}
         </>}
