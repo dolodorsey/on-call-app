@@ -10,6 +10,8 @@ import './customer-profile-tools.css'
 import './operations-command.css'
 import './provider-verification-ops.css'
 import './provider-verification-readiness.css'
+import './provider-account-activation.css'
+import './marketplace-ops-alerts.css'
 import './root-layout-rescue.css'
 import './account-recovery.css'
 import OnCallEntry from './OnCallEntry'
@@ -25,6 +27,9 @@ import PaymentReadinessHost from './PaymentReadinessHost'
 import BookingChatHost from './BookingChatHost'
 import ProviderVerificationOpsHost from './ProviderVerificationOpsHost'
 import ProviderVerificationReadinessHost from './ProviderVerificationReadinessHost'
+import ProviderAccountActivation from './ProviderAccountActivation'
+import ProviderActivationAccessHost from './ProviderActivationAccessHost'
+import MarketplaceOpsAlertsHost from './MarketplaceOpsAlertsHost'
 
 const ProviderCommand = lazy(() => import('./ProviderCommand'))
 const ProviderRealtimeBridge = lazy(() => import('./ProviderRealtimeBridge'))
@@ -37,6 +42,7 @@ const OperationsCommand = lazy(() => import('./OperationsCommand'))
 
 const pathname = window.location.pathname.replace(/\/$/, '') || '/'
 const isProviderApplication = pathname === '/apply'
+const isProviderActivation = pathname === '/provider/activate'
 const isProviderWorkspace = pathname === '/provider'
 const isOperationsWorkspace = pathname === '/ops'
 
@@ -51,7 +57,7 @@ class RuntimeBoundary extends React.Component<React.PropsWithChildren, { hasErro
 }
 
 function RouteLoading() {
-  const label = isOperationsWorkspace ? 'Opening Marketplace Operations' : isProviderApplication ? 'Opening provider application' : 'Opening Provider Command'
+  const label = isOperationsWorkspace ? 'Opening Marketplace Operations' : isProviderActivation ? 'Opening provider activation' : isProviderApplication ? 'Opening provider application' : 'Opening Provider Command'
   return <div className="oc-route-loading" role="status" aria-live="polite"><div className="oc-route-loading__mark">OC</div><div className="oc-route-loading__pulse"/><span>{label}</span></div>
 }
 
@@ -63,15 +69,17 @@ ReactDOM.createRoot(rootElement).render(
     <RuntimeBoundary>
       <div className="oc-experience" data-app="on-call">
         {isOperationsWorkspace ? (
-          <Suspense fallback={<RouteLoading/>}><><OperationsCommand/><ProviderVerificationOpsHost/></></Suspense>
+          <Suspense fallback={<RouteLoading/>}><><OperationsCommand/><ProviderVerificationOpsHost/><MarketplaceOpsAlertsHost/></></Suspense>
         ) : <>
           <PaymentReadinessHost/>
           <BookingChatHost/>
           <PushRegistrationHost/>
           <AccountRecoveryHost/>
-          {isProviderApplication || isProviderWorkspace ? (
+          {isProviderActivation ? (
+            <ProviderAccountActivation/>
+          ) : isProviderApplication || isProviderWorkspace ? (
             <Suspense fallback={<RouteLoading />}>
-              {isProviderApplication ? <ProviderApply /> : <><ProviderCommand/><ProviderVerificationReadinessHost/><ProviderRealtimeBridge/><ProviderIssueHost/><ProviderMatchHost/><ProviderNoShowHost/><ProviderReliabilityHost/></>}
+              {isProviderApplication ? <ProviderApply /> : <><ProviderActivationAccessHost/><ProviderCommand/><ProviderVerificationReadinessHost/><ProviderRealtimeBridge/><ProviderIssueHost/><ProviderMatchHost/><ProviderNoShowHost/><ProviderReliabilityHost/></>}
             </Suspense>
           ) : <><OnCallEntry/><CustomerRealtimeBridge/><OnCallEnhancementHost/><CustomerOperationsHost/><CustomerCancellationHost/><CustomerSettlementReviewHost/><CustomerProfileToolsHost/></>}
         </>}
