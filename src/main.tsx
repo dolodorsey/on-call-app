@@ -30,6 +30,7 @@ import ProviderVerificationReadinessHost from './ProviderVerificationReadinessHo
 import ProviderAccountActivation from './ProviderAccountActivation'
 import ProviderActivationAccessHost from './ProviderActivationAccessHost'
 import MarketplaceOpsAlertsHost from './MarketplaceOpsAlertsHost'
+import InteractionContractHost from './InteractionContractHost'
 
 const ProviderCommand = lazy(() => import('./ProviderCommand'))
 const ProviderRealtimeBridge = lazy(() => import('./ProviderRealtimeBridge'))
@@ -68,6 +69,7 @@ ReactDOM.createRoot(rootElement).render(
   <React.StrictMode>
     <RuntimeBoundary>
       <div className="oc-experience" data-app="on-call">
+        <InteractionContractHost/>
         {isOperationsWorkspace ? (
           <Suspense fallback={<RouteLoading/>}><><OperationsCommand/><ProviderVerificationOpsHost/><MarketplaceOpsAlertsHost/></></Suspense>
         ) : <>
