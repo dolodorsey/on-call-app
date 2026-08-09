@@ -1,0 +1,30 @@
+import 'jsr:@supabase/functions-js/edge-runtime.d.ts';
+import Stripe from 'npm:stripe@18.5.0';
+import { createClient } from 'npm:@supabase/supabase-js@2.112.0';
+const cors={'Access-Control-Allow-Origin':'*','Access-Control-Allow-Headers':'authorization, apikey, content-type, x-client-info','Access-Control-Allow-Methods':'POST, OPTIONS'};
+const json=(body:unknown,status=200)=>new Response(JSON.stringify(body),{status,headers:{...cors,'Content-Type':'application/json'}});
+Deno.serve(async(req)=>{
+ if(req.method==='OPTIONS')return new Response('ok',{headers:cors});
+ if(req.method!=='POST')return json({error:'Method not allowed'},405);
+ try{
+  const token=req.headers.get('authorization')?.replace(/^Bearer\s+/i,'');if(!token)throw new Error('Authentication required');
+  const url=Deno.env.get('SUPABASE_URL')!,service=Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+  const admin=createClient(url,service,{auth:{persistSession:false,autoRefreshToken:false}});const{data:{user}}=await admin.auth.getUser(token);if(!user)throw new Error('Authentication required');
+  let stripeKey=Deno.env.get('STRIPE_SECRET_KEY')||'';if(!stripeKey){const{data,error}=await admin.rpc('sos_get_runtime_secret',{secret_name:'STRIPE_SECRET_KEY'});if(!error&&data)stripeKey=String(data)}
+  const{bookingId,action='quote',expectedFeeAmount}=await req.json();if(typeof bookingId!=='string')return json({error:'bookingId is required'},422);
+  const{data:u}=await admin.from('oc_users').select('id,role').eq('auth_id',user.id).maybeSingle();if(!u||u.role!=='provider')throw new Error('Provider account required');
+  const{data:p}=await admin.from('oc_provider_profiles').select('id').eq('user_id',u.id).maybeSingle();if(!p)throw new Error('Provider account required');
+  const{data:b}=await admin.from('oc_bookings').select('*').eq('id',bookingId).eq('provider_id',p.id).maybeSingle();if(!b)throw new Error('Assigned booking not found');
+  const{data:cfgRow}=await admin.from('oc_system_config').select('config_value').eq('config_key','cancellation_policy').eq('is_active',true).maybeSingle();const cfg=cfgRow?.config_value||{};const wait=Math.max(1,Number(cfg.customer_no_show_wait_minutes||10));
+  const total=Number(b.total_price||b.final_price||b.estimated_price||0),pct=Number(cfg.on_site?.percent||20),min=Number(cfg.on_site?.minimum||15),max=Number(cfg.on_site?.maximum||40),share=Number(cfg.provider_share_percent||80);const fee=Math.min(max,Math.max(min,Math.round(total*pct)/100));const feeCents=Math.round(fee*100),providerCents=Math.round(feeCents*share/100),platformCents=feeCents-providerCents;
+  const waitSeconds=wait*60,elapsedSeconds=b.arrived_at?Math.max(0,Math.floor((Date.now()-new Date(b.arrived_at).getTime())/1000)):0,remainingSeconds=Math.max(0,waitSeconds-elapsedSeconds);const{data:pay}=await admin.from('oc_booking_payments').select('*').eq('booking_id',bookingId).maybeSingle();const canSettle=b.status==='on_site'&&Boolean(b.arrived_at)&&remainingSeconds===0&&pay?.status==='authorized'&&Boolean(pay?.stripe_payment_intent_id);
+  const quote={bookingId,status:b.status,canSettle,waitMinutes:wait,secondsRemaining:remainingSeconds,remainingMinutes:Math.ceil(remainingSeconds/60),feeAmount:fee,fee,providerCompensation:providerCents/100,reason:b.status!=='on_site'?'No-show settlement unlocks after arrival':remainingSeconds>0?`Wait ${Math.ceil(remainingSeconds/60)} more minute${Math.ceil(remainingSeconds/60)===1?'':'s'}`:pay?.status!=='authorized'?'Customer payment authorization is required':'Eligible for customer no-show settlement'};
+  if(action==='quote')return json(quote);if(action!=='settle')return json({error:'action must be quote or settle'},422);if(!canSettle)throw new Error(quote.reason);if(expectedFeeAmount!=null&&Math.abs(Number(expectedFeeAmount)-fee)>0.009)throw new Error('No-show quote changed. Review the latest amount before confirming.');if(!stripeKey)throw new Error('STRIPE_SECRET_KEY is not configured');
+  await admin.from('oc_booking_payments').update({settlement_type:'customer_no_show',cancellation_fee_cents:feeCents,original_platform_fee:pay.original_platform_fee??pay.platform_fee,original_provider_amount:pay.original_provider_amount??pay.provider_amount,platform_fee:platformCents,provider_amount:providerCents,status:'capture_pending',updated_at:new Date().toISOString()}).eq('id',pay.id);
+  const stripe=new Stripe(stripeKey,{httpClient:Stripe.createFetchHttpClient()});await stripe.paymentIntents.capture(pay.stripe_payment_intent_id,{amount_to_capture:feeCents,final_capture:true,metadata:{settlement_type:'customer_no_show',cancellation_fee_cents:String(feeCents)}},{idempotencyKey:`oc-no-show-${pay.id}-${feeCents}-v2`});
+  await admin.from('oc_bookings').update({status:'canceled',cancelled_by:'customer_no_show',cancellation_reason:'Customer no-show after provider arrival',cancellation_fee:fee,cancellation_provider_compensation:providerCents/100,cancellation_policy_version:Number(cfg.version||1),cancelled_at:new Date().toISOString(),canceled_at:new Date().toISOString(),updated_at:new Date().toISOString()}).eq('id',bookingId);
+  const number=`OC-I-${new Date().toISOString().slice(0,10).replaceAll('-','')}-${crypto.randomUUID().replaceAll('-','').slice(0,8).toUpperCase()}`;await admin.from('oc_incident_reports').insert({incident_number:number,booking_id:bookingId,provider_id:p.id,customer_id:b.customer_id,incident_type:'customer_no_show',severity:'low',description:`Customer no-show after ${wait}-minute wait`,status:'open'});
+  await admin.from('oc_booking_events').insert({booking_id:bookingId,event_type:'customer_no_show',actor_id:u.id,actor_role:'provider',description:'Provider completed customer no-show settlement',metadata:{wait_minutes:wait,cancellation_fee:fee,provider_compensation:providerCents/100}});
+  return json({...quote,ok:true});
+ }catch(e){const m=e instanceof Error?e.message:'Unexpected error';const config=m.endsWith('is not configured');return json({error:config?'Payments are not configured for this release.':m},config?503:m==='Authentication required'?401:400)}
+});
