@@ -63,6 +63,7 @@ jobs:
           PRIVATE_KEY_P12="$RUNNER_TEMP/on-call-distribution-key.p12"
           CERT_PATH="$RUNNER_TEMP/on-call-distribution.cer"
           CERT_PASSWORD_PATH="$RUNNER_TEMP/on-call-distribution-password"
+          PROFILE_PATH="$RUNNER_TEMP/on-call-app-store.mobileprovision"
           META_FILE="$RUNNER_TEMP/apple-release-meta.json"
 
           curl --fail --silent --show-error \
@@ -85,12 +86,12 @@ jobs:
             "$APPLE_CREDENTIAL_BROKER_URL" \
             -o "$CRED_FILE"
 
-          python3 - "$CRED_FILE" "$KEY_PATH" "$PRIVATE_KEY_P12" "$CERT_PATH" "$CERT_PASSWORD_PATH" "$META_FILE" <<'PY'
+          python3 - "$CRED_FILE" "$KEY_PATH" "$PRIVATE_KEY_P12" "$CERT_PATH" "$CERT_PASSWORD_PATH" "$PROFILE_PATH" "$META_FILE" <<'PY'
           import base64,json,os,sys
-          source,key_path,p12_path,cert_path,password_path,meta_path=sys.argv[1:]
+          source,key_path,p12_path,cert_path,password_path,profile_path,meta_path=sys.argv[1:]
           with open(source,'r',encoding='utf-8') as f:
               data=json.load(f)
-          required=['key_id','issuer_id','team_id','key_content_base64','distribution_private_key_p12_base64','distribution_private_key_p12_password','distribution_certificate_content_base64']
+          required=['key_id','issuer_id','team_id','key_content_base64','distribution_private_key_p12_base64','distribution_private_key_p12_password','distribution_certificate_content_base64','provisioning_profile_content_base64','provisioning_profile_name','provisioning_profile_uuid']
           if any(not str(data.get(k,'')).strip() for k in required):
               raise SystemExit('Supabase Apple release credential response is incomplete')
           with open(key_path,'wb') as f:
@@ -99,17 +100,21 @@ jobs:
               f.write(base64.b64decode(data['distribution_private_key_p12_base64']))
           with open(cert_path,'wb') as f:
               f.write(base64.b64decode(data['distribution_certificate_content_base64']))
+          with open(profile_path,'wb') as f:
+              f.write(base64.b64decode(data['provisioning_profile_content_base64']))
           with open(password_path,'w',encoding='utf-8') as f:
               f.write(str(data['distribution_private_key_p12_password']))
           with open(meta_path,'w',encoding='utf-8') as f:
-              json.dump({'key_id':data['key_id'],'issuer_id':data['issuer_id'],'team_id':data['team_id'],'certificate_type':data.get('distribution_certificate_type'),'certificate_expiration':data.get('distribution_certificate_expiration')},f)
-          for path in (key_path,p12_path,cert_path,password_path): os.chmod(path,0o600)
+              json.dump({'key_id':data['key_id'],'issuer_id':data['issuer_id'],'team_id':data['team_id'],'profile_name':data['provisioning_profile_name'],'profile_uuid':data['provisioning_profile_uuid']},f)
+          for path in (key_path,p12_path,cert_path,password_path,profile_path): os.chmod(path,0o600)
           PY
 
           KEY_ID=$(python3 -c "import json; print(json.load(open('$META_FILE'))['key_id'])")
           ISSUER_ID=$(python3 -c "import json; print(json.load(open('$META_FILE'))['issuer_id'])")
           TEAM_ID=$(python3 -c "import json; print(json.load(open('$META_FILE'))['team_id'])")
-          [[ -s "$KEY_PATH" && -s "$PRIVATE_KEY_P12" && -s "$CERT_PATH" && -n "$KEY_ID" && -n "$ISSUER_ID" && -n "$TEAM_ID" ]] || { echo 'Apple signing files are incomplete'; exit 1; }
+          PROFILE_NAME=$(python3 -c "import json; print(json.load(open('$META_FILE'))['profile_name'])")
+          PROFILE_UUID=$(python3 -c "import json; print(json.load(open('$META_FILE'))['profile_uuid'])")
+          [[ -s "$KEY_PATH" && -s "$PRIVATE_KEY_P12" && -s "$CERT_PATH" && -s "$PROFILE_PATH" && -n "$KEY_ID" && -n "$ISSUER_ID" && -n "$TEAM_ID" && -n "$PROFILE_NAME" && -n "$PROFILE_UUID" ]] || { echo 'Apple signing files are incomplete'; exit 1; }
 
           echo 'Live Apple distribution certificate metadata:'
           openssl x509 -inform DER -in "$CERT_PATH" -noout -subject -issuer -dates
@@ -125,17 +130,23 @@ jobs:
           security import "$PRIVATE_KEY_P12" -P "$CERT_PASSWORD" -A -k "$KEYCHAIN_PATH"
           security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
 
+          mkdir -p "$HOME/Library/MobileDevice/Provisioning Profiles"
+          cp "$PROFILE_PATH" "$HOME/Library/MobileDevice/Provisioning Profiles/${PROFILE_UUID}.mobileprovision"
+
           echo 'Available code-signing identities:'
           security find-identity -v -p codesigning "$KEYCHAIN_PATH"
+          echo "Installed App Store provisioning profile: ${PROFILE_NAME}"
 
           {
             echo "ASC_KEY_ID=$KEY_ID"
             echo "ASC_ISSUER_ID=$ISSUER_ID"
             echo "APPLE_TEAM_ID=$TEAM_ID"
             echo "ASC_KEY_PATH=$KEY_PATH"
+            echo "IOS_PROFILE_NAME=$PROFILE_NAME"
+            echo "IOS_PROFILE_UUID=$PROFILE_UUID"
           } >> "$GITHUB_ENV"
 
-          rm -f "$TOKEN_FILE" "$CRED_FILE" "$PRIVATE_KEY_P12" "$CERT_PATH" "$CERT_PASSWORD_PATH" "$META_FILE"
+          rm -f "$TOKEN_FILE" "$CRED_FILE" "$PRIVATE_KEY_P12" "$CERT_PATH" "$CERT_PASSWORD_PATH" "$PROFILE_PATH" "$META_FILE"
 
       - uses: actions/setup-node@v6
         with:
@@ -151,8 +162,9 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          [[ -n "$ASC_KEY_ID" && -n "$ASC_ISSUER_ID" && -n "$APPLE_TEAM_ID" ]] || { echo 'Apple API identity is incomplete'; exit 1; }
+          [[ -n "$ASC_KEY_ID" && -n "$ASC_ISSUER_ID" && -n "$APPLE_TEAM_ID" && -n "$IOS_PROFILE_NAME" && -n "$IOS_PROFILE_UUID" ]] || { echo 'Apple release identity is incomplete'; exit 1; }
           [[ -s "$ASC_KEY_PATH" ]] || { echo 'App Store Connect key file is missing'; exit 1; }
+          [[ -s "$HOME/Library/MobileDevice/Provisioning Profiles/${IOS_PROFILE_UUID}.mobileprovision" ]] || { echo 'App Store provisioning profile is missing'; exit 1; }
 
       - name: Install JavaScript dependencies
         run: npm ci
