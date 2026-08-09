@@ -5,7 +5,7 @@ type Match={offer_id?:number;booking_id:string;service_name:string;category_name
 const money=(v?:number)=>`$${Number(v||0).toFixed(2)}`
 
 export default function ProviderMatchHost(){
- const[item,setItem]=useState<Match|null>(null),[busy,setBusy]=useState(''),[notice,setNotice]=useState(''),[clock,setClock]=useState(Date.now())
+ const[item,setItem]=useState<Match|null>(null),[busy,setBusy]=useState(''),[notice,setNotice]=useState(''),[clock,setClock]=useState(Date.now()),[connection,setConnection]=useState('connecting')
  const[permission,setPermission]=useState<NotificationPermission>(()=>typeof Notification==='undefined'?'denied':Notification.permission)
  const lastNotified=useRef<string>('')
  const announce=(next:Match|null)=>{
@@ -18,7 +18,20 @@ export default function ProviderMatchHost(){
    n.onclick=()=>{window.focus();n.close()}
  }
  const load=async()=>{const{data,error}=await supabase.rpc('oc_provider_active_offers');if(error){setItem(null);return}const next=(data?.[0]||null) as Match|null;setItem(next);announce(next)}
- useEffect(()=>{let disposed=false;const run=async()=>{if(disposed)return;await load()};run();const onFocus=()=>run();window.addEventListener('focus',onFocus);const t=window.setInterval(run,8000);return()=>{disposed=true;clearInterval(t);window.removeEventListener('focus',onFocus)}},[])
+ useEffect(()=>{
+   let disposed=false;let channel:any=null
+   const run=async()=>{if(disposed)return;await load()}
+   ;(async()=>{
+     const{data:{session}}=await supabase.auth.getSession()
+     if(disposed||!session?.access_token)return
+     supabase.realtime.setAuth(session.access_token)
+     channel=supabase.channel(`oncall-provider-offers-${session.user.id}`)
+       .on('postgres_changes',{event:'*',schema:'public',table:'oc_booking_offers'},()=>run())
+       .subscribe(status=>{if(disposed)return;setConnection(status==='SUBSCRIBED'?'live':status==='CHANNEL_ERROR'||status==='TIMED_OUT'||status==='CLOSED'?'fallback':'connecting')})
+   })()
+   run();const onFocus=()=>run();window.addEventListener('focus',onFocus);const t=window.setInterval(run,8000)
+   return()=>{disposed=true;clearInterval(t);window.removeEventListener('focus',onFocus);if(channel)supabase.removeChannel(channel)}
+ },[])
  useEffect(()=>{const t=window.setInterval(()=>setClock(Date.now()),1000);return()=>window.clearInterval(t)},[])
  const secondsLeft=item?.expires_at?Math.max(0,Math.ceil((new Date(item.expires_at).getTime()-clock)/1000)):Math.max(0,Number(item?.seconds_remaining||0))
  useEffect(()=>{if(item&&secondsLeft===0){const t=window.setTimeout(()=>load(),250);return()=>window.clearTimeout(t)}},[item?.offer_id,secondsLeft])
@@ -29,7 +42,7 @@ export default function ProviderMatchHost(){
  return <div style={{position:'fixed',left:'50%',transform:'translateX(-50%)',top:82,zIndex:1325,width:'min(520px,calc(100vw - 28px))'}}>
   {permission==='default'&&<button type="button" onClick={enable} style={{display:'block',margin:'0 auto 8px',border:0,borderRadius:999,padding:'9px 12px',background:'#0b1727',color:'#fff',fontSize:9,fontWeight:900,letterSpacing:'.08em',boxShadow:'0 12px 34px rgba(0,0,0,.25)'}}>ENABLE NEW JOB ALERTS</button>}
   {item&&<section style={{borderRadius:22,padding:16,background:'rgba(9,20,34,.97)',color:'#fff',boxShadow:'0 24px 80px rgba(0,0,0,.38)',border:'1px solid rgba(91,188,255,.22)',backdropFilter:'blur(18px)'}}>
-    <div style={{display:'flex',justifyContent:'space-between',gap:14,alignItems:'flex-start'}}><div><small style={{fontSize:9,fontWeight:900,letterSpacing:'.14em',color:'#5bbcff'}}>LEASED TO YOU · {Math.round(Number(item.match_score||0))}% MATCH</small><strong style={{display:'block',fontSize:17,marginTop:5}}>{item.service_name}</strong><span style={{display:'block',fontSize:11,marginTop:4,color:'rgba(255,255,255,.64)'}}>{item.category_name||'ON CALL service'} · {[item.market_city,item.market_state].filter(Boolean).join(', ')||'Your service area'}</span></div><div style={{textAlign:'right'}}><strong style={{display:'block',fontSize:22}}>{money(item.estimated_provider_payout)}</strong><small style={{fontSize:8,letterSpacing:'.1em',color:'rgba(255,255,255,.5)'}}>EST. PAYOUT</small></div></div>
+    <div style={{display:'flex',justifyContent:'space-between',gap:14,alignItems:'flex-start'}}><div><small style={{fontSize:9,fontWeight:900,letterSpacing:'.14em',color:'#5bbcff'}}>LEASED TO YOU · {Math.round(Number(item.match_score||0))}% MATCH · {connection==='live'?'LIVE':'FALLBACK'}</small><strong style={{display:'block',fontSize:17,marginTop:5}}>{item.service_name}</strong><span style={{display:'block',fontSize:11,marginTop:4,color:'rgba(255,255,255,.64)'}}>{item.category_name||'ON CALL service'} · {[item.market_city,item.market_state].filter(Boolean).join(', ')||'Your service area'}</span></div><div style={{textAlign:'right'}}><strong style={{display:'block',fontSize:22}}>{money(item.estimated_provider_payout)}</strong><small style={{fontSize:8,letterSpacing:'.1em',color:'rgba(255,255,255,.5)'}}>EST. PAYOUT</small></div></div>
     <div style={{height:4,borderRadius:999,background:'rgba(255,255,255,.08)',overflow:'hidden',marginTop:13}}><div style={{height:'100%',width:`${Math.max(0,Math.min(100,(secondsLeft/45)*100))}%`,background:secondsLeft<=10?'#ff5c68':'#5bbcff',transition:'width 1s linear'}}/></div>
     <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginTop:6}}><small style={{fontSize:8,color:'rgba(255,255,255,.5)',letterSpacing:'.08em'}}>EXCLUSIVE OFFER WINDOW</small><b style={{fontSize:12,color:secondsLeft<=10?'#ff7580':'#8ed7ff'}}>{secondsLeft}s</b></div>
     <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:8,marginTop:12}}><div style={{padding:10,borderRadius:12,background:'rgba(255,255,255,.06)'}}><small style={{fontSize:8,color:'rgba(255,255,255,.5)'}}>DISTANCE</small><b style={{display:'block',fontSize:12,marginTop:2}}>{item.distance_miles==null?'Nearby':`${Number(item.distance_miles).toFixed(1)} mi`}</b></div><div style={{padding:10,borderRadius:12,background:'rgba(255,255,255,.06)'}}><small style={{fontSize:8,color:'rgba(255,255,255,.5)'}}>ETA</small><b style={{display:'block',fontSize:12,marginTop:2}}>{item.eta_minutes?`${item.eta_minutes} min`:'After GPS'}</b></div><div style={{padding:10,borderRadius:12,background:'rgba(255,255,255,.06)'}}><small style={{fontSize:8,color:'rgba(255,255,255,.5)'}}>TYPE</small><b style={{display:'block',fontSize:12,marginTop:2,textTransform:'capitalize'}}>{(item.request_type||'on demand').replaceAll('_',' ')}</b></div></div>
