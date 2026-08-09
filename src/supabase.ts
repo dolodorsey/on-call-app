@@ -21,6 +21,7 @@ if (!configuredProjectRef || configuredProjectRef !== expectedProjectRef) {
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 export const ON_CALL_APP_URL = 'https://oncallallday.com';
 export const ON_CALL_CONFIRM_URL = `${ON_CALL_APP_URL}/auth/confirm`;
+export const stripeClientPublishableKeyConfigured = Boolean(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY);
 export type MarketplacePaymentsHealth = {
   ready: boolean;
   stripe_server_credential: boolean;
@@ -149,6 +150,7 @@ export const transitionBooking = async (bookingId: string, status: string) => {
 };
 
 export const createBookingPayment = async (bookingId: string) => {
+  if (!stripeClientPublishableKeyConfigured) throw new Error('ON CALL secure payment client is not configured. No charge was attempted.');
   await assertMarketplacePaymentsReady();
   const { data, error } = await supabase.functions.invoke('oc-create-payment', { body: { bookingId } });
   if (error) throw error; return data as { paymentId: string; clientSecret: string; status: string };
