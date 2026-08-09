@@ -1,0 +1,116 @@
+name: ON CALL iOS TestFlight
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'src/**'
+      - 'components/**'
+      - 'public/**'
+      - 'ios/**'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'capacitor.config.*'
+      - 'Gemfile'
+      - '.github/workflows/ios-testflight.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: on-call-ios-testflight
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  verify-build-upload:
+    runs-on: macos-latest
+    timeout-minutes: 45
+    env:
+      ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+      ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+      ASC_KEY_CONTENT: ${{ secrets.ASC_KEY_CONTENT }}
+      ASC_KEY_CONTENT_BASE64: ${{ secrets.ASC_KEY_CONTENT_BASE64 }}
+      IOS_DISTRIBUTION_CERT_BASE64: ${{ secrets.IOS_DISTRIBUTION_CERT_BASE64 }}
+      IOS_DISTRIBUTION_CERT_PASSWORD: ${{ secrets.IOS_DISTRIBUTION_CERT_PASSWORD }}
+      IOS_PROVISIONING_PROFILE_BASE64: ${{ secrets.IOS_PROVISIONING_PROFILE_BASE64 }}
+      IOS_KEYCHAIN_PASSWORD: ${{ secrets.IOS_KEYCHAIN_PASSWORD }}
+      TESTFLIGHT_CHANGELOG: Automated ON CALL build from ${{ github.sha }}
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+          cache: npm
+
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.4'
+          bundler-cache: true
+
+      - name: Validate Apple API credentials
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ -n "$ASC_KEY_ID" ]] || { echo 'Missing GitHub secret: ASC_KEY_ID'; exit 1; }
+          [[ -n "$ASC_ISSUER_ID" ]] || { echo 'Missing GitHub secret: ASC_ISSUER_ID'; exit 1; }
+          [[ -n "$ASC_KEY_CONTENT" || -n "$ASC_KEY_CONTENT_BASE64" ]] || { echo 'Missing GitHub secret: ASC_KEY_CONTENT or ASC_KEY_CONTENT_BASE64'; exit 1; }
+
+      - name: Prepare App Store Connect API key
+        shell: bash
+        run: |
+          set -euo pipefail
+          KEY_PATH="$RUNNER_TEMP/AuthKey_${ASC_KEY_ID}.p8"
+          if [[ -n "$ASC_KEY_CONTENT_BASE64" ]]; then
+            printf '%s' "$ASC_KEY_CONTENT_BASE64" | base64 --decode > "$KEY_PATH"
+          else
+            printf '%s' "$ASC_KEY_CONTENT" > "$KEY_PATH"
+          fi
+          chmod 600 "$KEY_PATH"
+          echo "ASC_KEY_PATH=$KEY_PATH" >> "$GITHUB_ENV"
+
+      - name: Prepare signing keychain and optional signing assets
+        shell: bash
+        run: |
+          set -euo pipefail
+          KEYCHAIN_PASSWORD="${IOS_KEYCHAIN_PASSWORD:-$(uuidgen)}"
+          KEYCHAIN_PATH="$RUNNER_TEMP/on-call-build.keychain-db"
+          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH"
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security list-keychains -d user -s "$KEYCHAIN_PATH" login.keychain-db
+          security default-keychain -s "$KEYCHAIN_PATH"
+
+          if [[ -n "$IOS_DISTRIBUTION_CERT_BASE64" ]]; then
+            CERT_PATH="$RUNNER_TEMP/on-call-distribution.p12"
+            printf '%s' "$IOS_DISTRIBUTION_CERT_BASE64" | base64 --decode > "$CERT_PATH"
+            security import "$CERT_PATH" -P "$IOS_DISTRIBUTION_CERT_PASSWORD" -A -t cert -f pkcs12 -k "$KEYCHAIN_PATH"
+            security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          fi
+
+          if [[ -n "$IOS_PROVISIONING_PROFILE_BASE64" ]]; then
+            PROFILE_PATH="$RUNNER_TEMP/on-call.mobileprovision"
+            PROFILE_PLIST="$RUNNER_TEMP/on-call-profile.plist"
+            printf '%s' "$IOS_PROVISIONING_PROFILE_BASE64" | base64 --decode > "$PROFILE_PATH"
+            security cms -D -i "$PROFILE_PATH" > "$PROFILE_PLIST"
+            PROFILE_UUID=$(/usr/libexec/PlistBuddy -c 'Print UUID' "$PROFILE_PLIST")
+            mkdir -p "$HOME/Library/MobileDevice/Provisioning Profiles"
+            cp "$PROFILE_PATH" "$HOME/Library/MobileDevice/Provisioning Profiles/${PROFILE_UUID}.mobileprovision"
+          fi
+
+      - name: Install JavaScript dependencies
+        run: npm ci
+
+      - name: Full product quality gate
+        run: npm run verify
+
+      - name: Sync Capacitor iOS project
+        run: |
+          npm run build
+          npx cap sync ios
+
+      - name: Build, sign, and upload to TestFlight
+        working-directory: ios/App
+        run: bundle exec fastlane ios beta
