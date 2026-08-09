@@ -89,6 +89,15 @@ test('desktop layout cannot regress to a universal 460px root shell', () => {
   assert.ok(rescueImport > marketplaceImport && rescueImport > eliteImport, 'root layout rescue must be the last app stylesheet')
 })
 
+test('desktop marketplace and Provider Command cannot regress to micro-sized phone typography', () => {
+  const rescue = read('src/root-layout-rescue.css')
+  assert.match(rescue, /\.oc2-service-list strong,[\s\S]*?font-size:\s*14px\s*!important/)
+  assert.match(rescue, /\.oc2-service-list p,[\s\S]*?font-size:\s*12px\s*!important/)
+  assert.match(rescue, /\.oc2-nav button small[\s\S]*?font-size:\s*10px\s*!important/)
+  assert.match(rescue, /\.ocp-live strong,[\s\S]*?font-size:\s*13px\s*!important/)
+  assert.match(rescue, /\.ocp-metrics small,[\s\S]*?font-size:\s*10px\s*!important/)
+})
+
 test('active client lifecycle has no n8n dependency', () => {
   const source = activeClientFiles.map(read).join('\n')
   assert.doesNotMatch(source, /n8n/i)
