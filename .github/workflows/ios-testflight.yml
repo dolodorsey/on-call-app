@@ -33,7 +33,7 @@ jobs:
     steps:
       - uses: actions/checkout@v6
 
-      - name: Load Apple release credentials from Supabase
+      - name: Prepare Apple release signing from Supabase
         shell: bash
         env:
           APPLE_CREDENTIAL_BROKER_URL: https://dzlmtvodpyhetvektfuo.supabase.co/functions/v1/github-apple-release-credentials
@@ -44,6 +44,11 @@ jobs:
 
           TOKEN_FILE="$RUNNER_TEMP/github-oidc.json"
           CRED_FILE="$RUNNER_TEMP/apple-release-credentials.json"
+          KEY_PATH="$RUNNER_TEMP/AuthKey.p8"
+          CERT_PATH="$RUNNER_TEMP/on-call-distribution.p12"
+          CERT_PASSWORD_PATH="$RUNNER_TEMP/on-call-distribution-password"
+          META_FILE="$RUNNER_TEMP/apple-release-meta.json"
+
           curl --fail --silent --show-error \
             -H "Authorization: bearer ${ACTIONS_ID_TOKEN_REQUEST_TOKEN}" \
             "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=kollective-apple-release" \
@@ -64,31 +69,49 @@ jobs:
             "$APPLE_CREDENTIAL_BROKER_URL" \
             -o "$CRED_FILE"
 
-          python3 - "$CRED_FILE" "$GITHUB_ENV" <<'PY'
-          import json,secrets,sys
-          source,env_path=sys.argv[1],sys.argv[2]
+          python3 - "$CRED_FILE" "$KEY_PATH" "$CERT_PATH" "$CERT_PASSWORD_PATH" "$META_FILE" <<'PY'
+          import base64,json,os,sys
+          source,key_path,cert_path,password_path,meta_path=sys.argv[1:]
           with open(source,'r',encoding='utf-8') as f:
               data=json.load(f)
-          mapping={
-              'ASC_KEY_ID':'key_id',
-              'ASC_ISSUER_ID':'issuer_id',
-              'ASC_KEY_CONTENT_BASE64':'key_content_base64',
-              'IOS_DISTRIBUTION_CERT_BASE64':'distribution_cert_base64',
-              'IOS_DISTRIBUTION_CERT_PASSWORD':'distribution_cert_password',
-              'IOS_PROVISIONING_PROFILE_BASE64':'provisioning_profile_base64',
-              'IOS_KEYCHAIN_PASSWORD':'keychain_password',
-              'APPLE_TEAM_ID':'team_id',
-          }
-          missing=[field for field in mapping.values() if not str(data.get(field,'')).strip() and field!='keychain_password']
-          if missing:
+          required=['key_id','issuer_id','team_id','key_content_base64','distribution_cert_base64','distribution_cert_password']
+          if any(not str(data.get(k,'')).strip() for k in required):
               raise SystemExit('Supabase Apple release credential response is incomplete')
-          with open(env_path,'a',encoding='utf-8') as env:
-              for env_name,field in mapping.items():
-                  value=str(data.get(field,'') or '')
-                  delimiter='GHENV_'+secrets.token_hex(12)
-                  env.write(f'{env_name}<<{delimiter}\n{value}\n{delimiter}\n')
+          with open(key_path,'wb') as f:
+              f.write(base64.b64decode(data['key_content_base64']))
+          with open(cert_path,'wb') as f:
+              f.write(base64.b64decode(data['distribution_cert_base64']))
+          with open(password_path,'w',encoding='utf-8') as f:
+              f.write(str(data['distribution_cert_password']))
+          with open(meta_path,'w',encoding='utf-8') as f:
+              json.dump({'key_id':data['key_id'],'issuer_id':data['issuer_id'],'team_id':data['team_id']},f)
+          os.chmod(key_path,0o600); os.chmod(cert_path,0o600); os.chmod(password_path,0o600)
           PY
-          rm -f "$TOKEN_FILE" "$CRED_FILE"
+
+          KEY_ID=$(python3 -c "import json; print(json.load(open('$META_FILE'))['key_id'])")
+          ISSUER_ID=$(python3 -c "import json; print(json.load(open('$META_FILE'))['issuer_id'])")
+          TEAM_ID=$(python3 -c "import json; print(json.load(open('$META_FILE'))['team_id'])")
+          [[ -s "$KEY_PATH" && -s "$CERT_PATH" && -n "$KEY_ID" && -n "$ISSUER_ID" && -n "$TEAM_ID" ]] || { echo 'Apple signing files are incomplete'; exit 1; }
+
+          KEYCHAIN_PASSWORD=$(uuidgen)
+          KEYCHAIN_PATH="$RUNNER_TEMP/on-call-build.keychain-db"
+          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH"
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security list-keychains -d user -s "$KEYCHAIN_PATH" login.keychain-db
+          security default-keychain -s "$KEYCHAIN_PATH"
+          CERT_PASSWORD=$(cat "$CERT_PASSWORD_PATH")
+          security import "$CERT_PATH" -P "$CERT_PASSWORD" -A -t cert -f pkcs12 -k "$KEYCHAIN_PATH"
+          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+
+          {
+            echo "ASC_KEY_ID=$KEY_ID"
+            echo "ASC_ISSUER_ID=$ISSUER_ID"
+            echo "APPLE_TEAM_ID=$TEAM_ID"
+            echo "ASC_KEY_PATH=$KEY_PATH"
+          } >> "$GITHUB_ENV"
+
+          rm -f "$TOKEN_FILE" "$CRED_FILE" "$CERT_PATH" "$CERT_PASSWORD_PATH" "$META_FILE"
 
       - uses: actions/setup-node@v6
         with:
@@ -100,51 +123,13 @@ jobs:
           ruby-version: '3.4'
           bundler-cache: true
 
-      - name: Validate Apple API credentials
+      - name: Validate prepared Apple signing identity
         shell: bash
         run: |
           set -euo pipefail
-          [[ -n "$ASC_KEY_ID" ]] || { echo 'Missing Supabase credential: ASC_KEY_ID'; exit 1; }
-          [[ -n "$ASC_ISSUER_ID" ]] || { echo 'Missing Supabase credential: ASC_ISSUER_ID'; exit 1; }
-          [[ -n "$ASC_KEY_CONTENT_BASE64" ]] || { echo 'Missing Supabase credential: ASC_KEY_CONTENT_BASE64'; exit 1; }
-          [[ -n "$IOS_DISTRIBUTION_CERT_BASE64" ]] || { echo 'Missing Supabase credential: IOS_DISTRIBUTION_CERT_BASE64'; exit 1; }
-          [[ -n "$IOS_DISTRIBUTION_CERT_PASSWORD" ]] || { echo 'Missing Supabase credential: IOS_DISTRIBUTION_CERT_PASSWORD'; exit 1; }
-          [[ -n "$IOS_PROVISIONING_PROFILE_BASE64" ]] || { echo 'Missing Supabase credential: IOS_PROVISIONING_PROFILE_BASE64'; exit 1; }
-          [[ -n "$APPLE_TEAM_ID" ]] || { echo 'Missing Supabase credential: APPLE_TEAM_ID'; exit 1; }
-
-      - name: Prepare App Store Connect API key
-        shell: bash
-        run: |
-          set -euo pipefail
-          KEY_PATH="$RUNNER_TEMP/AuthKey_${ASC_KEY_ID}.p8"
-          printf '%s' "$ASC_KEY_CONTENT_BASE64" | base64 --decode > "$KEY_PATH"
-          chmod 600 "$KEY_PATH"
-          echo "ASC_KEY_PATH=$KEY_PATH" >> "$GITHUB_ENV"
-
-      - name: Prepare signing keychain and signing assets
-        shell: bash
-        run: |
-          set -euo pipefail
-          KEYCHAIN_PASSWORD="${IOS_KEYCHAIN_PASSWORD:-$(uuidgen)}"
-          KEYCHAIN_PATH="$RUNNER_TEMP/on-call-build.keychain-db"
-          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
-          security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH"
-          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
-          security list-keychains -d user -s "$KEYCHAIN_PATH" login.keychain-db
-          security default-keychain -s "$KEYCHAIN_PATH"
-
-          CERT_PATH="$RUNNER_TEMP/on-call-distribution.p12"
-          printf '%s' "$IOS_DISTRIBUTION_CERT_BASE64" | base64 --decode > "$CERT_PATH"
-          security import "$CERT_PATH" -P "$IOS_DISTRIBUTION_CERT_PASSWORD" -A -t cert -f pkcs12 -k "$KEYCHAIN_PATH"
-          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
-
-          PROFILE_PATH="$RUNNER_TEMP/on-call.mobileprovision"
-          PROFILE_PLIST="$RUNNER_TEMP/on-call-profile.plist"
-          printf '%s' "$IOS_PROVISIONING_PROFILE_BASE64" | base64 --decode > "$PROFILE_PATH"
-          security cms -D -i "$PROFILE_PATH" > "$PROFILE_PLIST"
-          PROFILE_UUID=$(/usr/libexec/PlistBuddy -c 'Print UUID' "$PROFILE_PLIST")
-          mkdir -p "$HOME/Library/MobileDevice/Provisioning Profiles"
-          cp "$PROFILE_PATH" "$HOME/Library/MobileDevice/Provisioning Profiles/${PROFILE_UUID}.mobileprovision"
+          [[ -n "$ASC_KEY_ID" && -n "$ASC_ISSUER_ID" && -n "$APPLE_TEAM_ID" ]] || { echo 'Apple API identity is incomplete'; exit 1; }
+          [[ -s "$ASC_KEY_PATH" ]] || { echo 'App Store Connect key file is missing'; exit 1; }
+          security find-identity -v -p codesigning | grep -q 'Apple Distribution' || { echo 'Apple Distribution signing identity not imported'; exit 1; }
 
       - name: Install JavaScript dependencies
         run: npm ci
