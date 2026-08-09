@@ -22,7 +22,6 @@ concurrency:
 permissions:
   contents: read
   id-token: write
-  actions: write
 
 jobs:
   verify-build-upload:
@@ -33,20 +32,6 @@ jobs:
 
     steps:
       - uses: actions/checkout@v6
-
-      - name: Scrub superseded signing logs
-        shell: bash
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          set -euo pipefail
-          curl --silent --show-error --location --request DELETE \
-            --header "Authorization: Bearer ${GH_TOKEN}" \
-            --header "Accept: application/vnd.github+json" \
-            --header "X-GitHub-Api-Version: 2022-11-28" \
-            --output /dev/null \
-            --write-out 'legacy signing log scrub HTTP %{http_code}\n' \
-            "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/runs/31302614506/logs" || true
 
       - name: Prepare Apple release signing from Supabase
         shell: bash
