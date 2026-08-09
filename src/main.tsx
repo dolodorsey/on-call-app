@@ -14,6 +14,7 @@ import CustomerOperationsHost from './CustomerOperationsHost'
 import CustomerCancellationHost from './CustomerCancellationHost'
 import CustomerSettlementReviewHost from './CustomerSettlementReviewHost'
 import CustomerProfileToolsHost from './CustomerProfileToolsHost'
+import CustomerRealtimeBridge from './CustomerRealtimeBridge'
 import PaymentReadinessHost from './PaymentReadinessHost'
 import BookingChatHost from './BookingChatHost'
 
@@ -57,7 +58,7 @@ ReactDOM.createRoot(rootElement).render(
           <Suspense fallback={<RouteLoading />}>
             {isProviderApplication ? <ProviderApply /> : <><ProviderCommand/><ProviderRealtimeBridge/><ProviderIssueHost/><ProviderMatchHost/><ProviderNoShowHost/><ProviderReliabilityHost/></>}
           </Suspense>
-        ) : <><OnCallEntry/><OnCallEnhancementHost/><CustomerOperationsHost/><CustomerCancellationHost/><CustomerSettlementReviewHost/><CustomerProfileToolsHost/></>}
+        ) : <><OnCallEntry/><CustomerRealtimeBridge/><OnCallEnhancementHost/><CustomerOperationsHost/><CustomerCancellationHost/><CustomerSettlementReviewHost/><CustomerProfileToolsHost/></>}
       </div>
     </RuntimeBoundary>
   </React.StrictMode>,
