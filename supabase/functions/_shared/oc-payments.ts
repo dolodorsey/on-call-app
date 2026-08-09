@@ -2,7 +2,7 @@ import { createClient } from "npm:@supabase/supabase-js@2.112.0";
 import Stripe from "npm:stripe@18.5.0";
 
 export const cors = {
-  "Access-Control-Allow-Origin": Deno.env.get("ON_CALL_APP_ORIGIN") ?? "https://oncallallday.com",
+  "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, apikey, content-type, x-client-info",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
@@ -21,9 +21,16 @@ export const admin = () => createClient(env("SUPABASE_URL"), env("SUPABASE_SERVI
   auth: { persistSession: false, autoRefreshToken: false },
 });
 
-export const stripe = () => new Stripe(env("STRIPE_SECRET_KEY"), {
-  httpClient: Stripe.createFetchHttpClient(),
-});
+export async function stripe() {
+  const client = admin();
+  let key = Deno.env.get("STRIPE_SECRET_KEY") || "";
+  if (!key) {
+    const { data, error } = await client.rpc("sos_get_runtime_secret", { secret_name: "STRIPE_SECRET_KEY" });
+    if (!error && data) key = String(data);
+  }
+  if (!key) throw new Error("STRIPE_SECRET_KEY is not configured");
+  return new Stripe(key, { httpClient: Stripe.createFetchHttpClient() });
+}
 
 export async function requireUser(req: Request) {
   const token = req.headers.get("Authorization")?.replace(/^Bearer\s+/i, "");
