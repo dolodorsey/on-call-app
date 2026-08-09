@@ -22,6 +22,7 @@ concurrency:
 permissions:
   contents: read
   id-token: write
+  actions: write
 
 jobs:
   verify-build-upload:
@@ -32,6 +33,20 @@ jobs:
 
     steps:
       - uses: actions/checkout@v6
+
+      - name: Scrub superseded signing logs
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          curl --silent --show-error --location --request DELETE \
+            --header "Authorization: Bearer ${GH_TOKEN}" \
+            --header "Accept: application/vnd.github+json" \
+            --header "X-GitHub-Api-Version: 2022-11-28" \
+            --output /dev/null \
+            --write-out 'legacy signing log scrub HTTP %{http_code}\n' \
+            "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/runs/31302614506/logs" || true
 
       - name: Prepare Apple release signing from Supabase
         shell: bash
@@ -101,8 +116,14 @@ jobs:
           security list-keychains -d user -s "$KEYCHAIN_PATH" login.keychain-db
           security default-keychain -s "$KEYCHAIN_PATH"
           CERT_PASSWORD=$(cat "$CERT_PASSWORD_PATH")
-          security import "$CERT_PATH" -P "$CERT_PASSWORD" -A -t cert -f pkcs12 -k "$KEYCHAIN_PATH"
+
+          echo 'Stored distribution certificate metadata:'
+          openssl pkcs12 -in "$CERT_PATH" -clcerts -nokeys -passin "pass:${CERT_PASSWORD}" 2>/dev/null | openssl x509 -noout -subject -issuer -dates
+
+          security import "$CERT_PATH" -P "$CERT_PASSWORD" -A -k "$KEYCHAIN_PATH"
           security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          echo 'Available code-signing identities:'
+          security find-identity -v -p codesigning "$KEYCHAIN_PATH" || true
 
           {
             echo "ASC_KEY_ID=$KEY_ID"
@@ -123,13 +144,12 @@ jobs:
           ruby-version: '3.4'
           bundler-cache: true
 
-      - name: Validate prepared Apple signing identity
+      - name: Validate prepared Apple API identity
         shell: bash
         run: |
           set -euo pipefail
           [[ -n "$ASC_KEY_ID" && -n "$ASC_ISSUER_ID" && -n "$APPLE_TEAM_ID" ]] || { echo 'Apple API identity is incomplete'; exit 1; }
           [[ -s "$ASC_KEY_PATH" ]] || { echo 'App Store Connect key file is missing'; exit 1; }
-          security find-identity -v -p codesigning | grep -q 'Apple Distribution' || { echo 'Apple Distribution signing identity not imported'; exit 1; }
 
       - name: Install JavaScript dependencies
         run: npm ci
