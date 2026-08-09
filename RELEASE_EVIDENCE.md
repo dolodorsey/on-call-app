@@ -67,7 +67,25 @@ The same server-side readiness helpers govern:
 - dispatcher provider selection;
 - Provider Command readiness counts.
 
-`/ops` now contains an operator verification queue for review/pass/fail of real provider checks. Provider Command shows the same database-backed readiness state and suppresses the old generic “go online” control until at least one approved service is genuinely dispatch-ready.
+`/ops` contains an operator verification queue for review/pass/fail of real provider checks. Provider Command shows the same database-backed readiness state and suppresses the old generic “go online” control until at least one approved service is genuinely dispatch-ready.
+
+## Private verification documents
+
+Provider verification evidence is now handled inside the product rather than through an off-platform document handoff.
+
+- Supabase Storage bucket: `marketplace-verification`.
+- Bucket is private (`public = false`).
+- Maximum file size: 10 MB.
+- Allowed types: PDF, JPEG, PNG, WebP, HEIC, HEIF.
+- Providers can upload only into their authenticated path: `on_call/<auth-user>/<application>/<check>/...`.
+- Other providers cannot browse those files.
+- Active marketplace operators may read verification evidence through authenticated policy only.
+- Operator review UI creates **5-minute signed URLs**; no permanent/public evidence URL is stored or shown.
+- Evidence paths are attached to the corresponding verification ledger row.
+- Uploading evidence moves a non-passed check to `submitted`; it **never auto-passes** identity, background, license, insurance, skills, service-area, or vehicle verification.
+- No update/delete Storage policy is granted to providers, preserving the submitted-evidence audit trail.
+
+The live bucket/privacy/policy configuration and authenticated-only evidence RPC grants have been verified directly in production.
 
 ## Marketplace controls currently implemented
 
@@ -75,6 +93,7 @@ The same server-side readiness helpers govern:
 - Market-aware service requests using server-owned catalog pricing.
 - Provider application and approved-account activation flow.
 - Real provider verification ledger and service-specific credential gates.
+- Private in-product verification evidence uploads and operator evidence review.
 - Approved-service mapping and Stripe payout readiness gate.
 - Ranked provider matching with exclusive expiring leased offers.
 - Provider accept/decline and automatic offer expiry/reassignment.
@@ -109,6 +128,9 @@ Regression coverage includes:
 - authenticated provider identity requirement;
 - central service-aware dispatch-readiness reuse;
 - operator/provider verification UIs;
+- private verification bucket/path restrictions;
+- evidence submission cannot auto-pass a check;
+- short-lived signed operator evidence links;
 - desktop shell/layout and readability regressions;
 - shared-backend project pinning;
 - active lifecycle independence from n8n.
@@ -120,7 +142,7 @@ The stricter gate exposed compile errors that the earlier build-only standard ha
 - The prior production stylesheet incorrectly constrained root product surfaces to a 460px phone shell on desktop. That blanket selector was removed.
 - The final desktop rescue stylesheet explicitly makes the customer marketplace and Provider Command full-width while keeping authentication appropriately focused.
 - Desktop service/card/metadata typography was increased so desktop no longer inherits phone-scale copy.
-- Customer profile tools, Provider Command readiness, and operator verification controls are mounted in the production build.
+- Customer profile tools, Provider Command readiness, provider evidence uploads, operator verification controls, and signed evidence review are mounted in the production build.
 
 ## Shared-backend isolation
 
