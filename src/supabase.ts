@@ -22,6 +22,7 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 export const ON_CALL_APP_URL = 'https://oncallallday.com';
 export const ON_CALL_CONFIRM_URL = `${ON_CALL_APP_URL}/auth/confirm`;
 export const stripeClientPublishableKeyConfigured = Boolean(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY);
+export const hostedCheckoutFallbackConfigured = true;
 export type MarketplacePaymentsHealth = {
   ready: boolean;
   stripe_server_credential: boolean;
@@ -178,10 +179,19 @@ export const transitionBooking = async (bookingId: string, status: string) => {
 };
 
 export const createBookingPayment = async (bookingId: string) => {
-  if (!stripeClientPublishableKeyConfigured) throw new Error('ON CALL secure payment client is not configured. No charge was attempted.');
   await assertMarketplacePaymentsReady();
-  const { data, error } = await supabase.functions.invoke('oc-create-payment', { body: { bookingId } });
-  if (error) throw error; return data as { paymentId: string; clientSecret: string; status: string };
+  if (stripeClientPublishableKeyConfigured) {
+    const { data, error } = await supabase.functions.invoke('oc-create-payment', { body: { bookingId } });
+    if (error) throw error;
+    return data as { paymentId: string; clientSecret: string; status: string };
+  }
+  if (!hostedCheckoutFallbackConfigured) throw new Error('ON CALL secure checkout is unavailable. No charge was attempted.');
+  const { data, error } = await supabase.functions.invoke('oc-create-checkout', { body: { bookingId, successUrl: `${ON_CALL_APP_URL}/?payment=authorized`, cancelUrl: `${ON_CALL_APP_URL}/?payment=canceled` } });
+  if (error) throw error;
+  if (data?.alreadyAuthorized) throw new Error('This ON CALL service is already payment-authorized.');
+  if (!data?.checkoutUrl) throw new Error(data?.error || 'Secure hosted checkout could not be opened.');
+  window.location.assign(data.checkoutUrl);
+  return await new Promise<never>(() => {});
 };
 
 export const getBookingPayments = async () => {
