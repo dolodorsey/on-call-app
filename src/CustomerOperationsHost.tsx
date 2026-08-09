@@ -15,19 +15,19 @@ export default function CustomerOperationsHost(){
   const[permission,setPermission]=useState<NotificationPermission>(()=>typeof Notification==='undefined'?'denied':Notification.permission)
   const[busy,setBusy]=useState(false)
 
+  const showAlert=(row:Alert)=>{
+    setAlert(row);window.setTimeout(()=>setAlert(current=>current?.id===row.id?null:current),4200)
+    if(typeof Notification!=='undefined'&&Notification.permission==='granted'){
+      const n=new Notification(row.title||'ON CALL update',{body:row.body||'Your booking has an update.',tag:row.id?`occ-${row.id}`:`occ-${Date.now()}`,icon:'/favicon.svg'})
+      n.onclick=()=>{window.focus();if(row.action_url)window.location.assign(row.action_url)}
+    }
+  }
+
   useEffect(()=>{
     let disposed=false
     let bookingChannel:ReturnType<typeof supabase.channel>|null=null
     let locationChannel:ReturnType<typeof supabase.channel>|null=null
     let notificationChannel:ReturnType<typeof supabase.channel>|null=null
-
-    const showAlert=(row:Alert)=>{
-      setAlert(row);window.setTimeout(()=>setAlert(current=>current?.id===row.id?null:current),4200)
-      if(typeof Notification!=='undefined'&&Notification.permission==='granted'){
-        const n=new Notification(row.title||'ON CALL update',{body:row.body||'Your booking has an update.',tag:row.id?`occ-${row.id}`:`occ-${Date.now()}`,icon:'/favicon.svg'})
-        n.onclick=()=>{window.focus();if(row.action_url)window.location.assign(row.action_url)}
-      }
-    }
 
     const loadPosition=async(providerId?:string|null)=>{
       if(!providerId){if(!disposed)setPosition(null);return}
