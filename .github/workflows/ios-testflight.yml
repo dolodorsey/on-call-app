@@ -123,7 +123,6 @@ jobs:
           security default-keychain -s "$KEYCHAIN_PATH"
           CERT_PASSWORD=$(cat "$CERT_PASSWORD_PATH")
           security import "$PRIVATE_KEY_P12" -P "$CERT_PASSWORD" -A -k "$KEYCHAIN_PATH"
-          security import "$CERT_PATH" -t cert -f x509 -k "$KEYCHAIN_PATH"
           security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
 
           echo 'Available code-signing identities:'
