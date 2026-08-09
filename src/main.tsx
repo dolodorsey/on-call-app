@@ -8,6 +8,7 @@ import './production-integrity.css'
 import './elite-ui.css'
 import './customer-profile-tools.css'
 import './operations-command.css'
+import './provider-verification-ops.css'
 import './root-layout-rescue.css'
 import OnCallEntry from './OnCallEntry'
 import OnCallEnhancementHost from './OnCallEnhancementHost'
@@ -19,6 +20,7 @@ import CustomerRealtimeBridge from './CustomerRealtimeBridge'
 import PushRegistrationHost from './PushRegistrationHost'
 import PaymentReadinessHost from './PaymentReadinessHost'
 import BookingChatHost from './BookingChatHost'
+import ProviderVerificationOpsHost from './ProviderVerificationOpsHost'
 
 const ProviderCommand = lazy(() => import('./ProviderCommand'))
 const ProviderRealtimeBridge = lazy(() => import('./ProviderRealtimeBridge'))
@@ -57,7 +59,7 @@ ReactDOM.createRoot(rootElement).render(
     <RuntimeBoundary>
       <div className="oc-experience" data-app="on-call">
         {isOperationsWorkspace ? (
-          <Suspense fallback={<RouteLoading/>}><OperationsCommand/></Suspense>
+          <Suspense fallback={<RouteLoading/>}><><OperationsCommand/><ProviderVerificationOpsHost/></></Suspense>
         ) : <>
           <PaymentReadinessHost/>
           <BookingChatHost/>
