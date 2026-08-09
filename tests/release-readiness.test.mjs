@@ -123,7 +123,7 @@ test('authenticated marketplace clients can never TRUNCATE product tables', () =
 })
 
 test('background provider offers have service-worker push registration and database alert generation', () => {
-  const main=read('src/main.tsx'), host=read('src/PushRegistrationHost.tsx'), worker=read('public/marketplace-sw.js'), migration=read('supabase/migrations/20260809043000_add_on_call_provider_offer_push_trigger.sql')
+  const main=read('src/main.tsx'), host=read('src/PushRegistrationHost.tsx'), worker=read('public/marketplace-sw.js'), migration=read('supabase/migrations/20260809043000_add_on_call_provider_offer_push_trigger.sql'), cadence=read('supabase/migrations/20260809043500_accelerate_marketplace_push_delivery.sql')
   assert.match(main,/PushRegistrationHost/)
   assert.match(host,/marketplace-push-config/)
   assert.match(host,/marketplace_register_push_subscription/)
@@ -135,6 +135,7 @@ test('background provider offers have service-worker push registration and datab
   assert.match(migration,/after insert on public\.oc_booking_offers/)
   assert.match(migration,/provider_offer/)
   assert.match(migration,/'push'/)
+  assert.match(cadence,/schedule:='10 seconds'/)
 })
 
 test('desktop layout cannot regress to a universal 460px root shell', () => {
