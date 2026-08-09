@@ -18,6 +18,7 @@ const ProviderRealtimeBridge = lazy(() => import('./ProviderRealtimeBridge'))
 const ProviderIssueHost = lazy(() => import('./ProviderIssueHost'))
 const ProviderMatchHost = lazy(() => import('./ProviderMatchHost'))
 const ProviderNoShowHost = lazy(() => import('./ProviderNoShowHost'))
+const ProviderReliabilityHost = lazy(() => import('./ProviderReliabilityHost'))
 const ProviderApply = lazy(() => import('../components/ProviderApply'))
 
 const pathname = window.location.pathname.replace(/\/$/, '') || '/'
@@ -49,7 +50,7 @@ ReactDOM.createRoot(rootElement).render(
         <PaymentReadinessHost/>
         {isProviderApplication || isProviderWorkspace ? (
           <Suspense fallback={<RouteLoading />}>
-            {isProviderApplication ? <ProviderApply /> : <><ProviderCommand/><ProviderRealtimeBridge/><ProviderIssueHost/><ProviderMatchHost/><ProviderNoShowHost/></>}
+            {isProviderApplication ? <ProviderApply /> : <><ProviderCommand/><ProviderRealtimeBridge/><ProviderIssueHost/><ProviderMatchHost/><ProviderNoShowHost/><ProviderReliabilityHost/></>}
           </Suspense>
         ) : <><OnCallEntry/><OnCallEnhancementHost/><CustomerOperationsHost/><CustomerCancellationHost/><CustomerSettlementReviewHost/></>}
       </div>
