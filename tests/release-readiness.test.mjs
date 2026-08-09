@@ -5,14 +5,7 @@ import test from 'node:test'
 const read = path => fs.readFileSync(new URL(`../${path}`, import.meta.url), 'utf8')
 
 const activeClientFiles = [
-  'src/main.tsx',
-  'src/supabase.ts',
-  'src/marketplace-client.ts',
-  'src/OnCallEntry.tsx',
-  'src/OnCallMarketplace.tsx',
-  'src/ProviderCommand.tsx',
-  'src/ProviderMatchHost.tsx',
-  'src/ProviderNoShowHost.tsx',
+  'src/main.tsx','src/supabase.ts','src/marketplace-client.ts','src/OnCallEntry.tsx','src/OnCallMarketplace.tsx','src/ProviderCommand.tsx','src/ProviderMatchHost.tsx','src/ProviderNoShowHost.tsx','src/CustomerProfileToolsHost.tsx',
 ]
 
 test('ON CALL is pinned to the approved shared backend while keeping the oc namespace', () => {
@@ -33,8 +26,7 @@ test('production provider route cannot fall back to the legacy all-in-one app', 
 })
 
 test('provider service completion is payment-gated and idempotent', () => {
-  const client = read('src/supabase.ts')
-  const completion = read('supabase/functions/oc-complete-service/index.ts')
+  const client = read('src/supabase.ts'), completion = read('supabase/functions/oc-complete-service/index.ts')
   assert.match(client, /assertMarketplacePaymentsReady\(\)/)
   assert.match(client, /oc-complete-service/)
   assert.match(completion, /\["working","completed"\]/)
@@ -45,8 +37,7 @@ test('provider service completion is payment-gated and idempotent', () => {
 })
 
 test('customer payment authorization requires both Stripe client and server readiness', () => {
-  const client = read('src/supabase.ts')
-  const host = read('src/PaymentReadinessHost.tsx')
+  const client = read('src/supabase.ts'), host = read('src/PaymentReadinessHost.tsx')
   assert.match(client, /VITE_STRIPE_PUBLISHABLE_KEY/)
   assert.match(client, /stripeClientPublishableKeyConfigured/)
   assert.match(client, /if \(!stripeClientPublishableKeyConfigured\) throw new Error\('ON CALL secure payment client is not configured/)
@@ -56,9 +47,7 @@ test('customer payment authorization requires both Stripe client and server read
 })
 
 test('customer cancellation uses quote then atomic settlement instead of a direct booking mutation', () => {
-  const client = read('src/supabase.ts')
-  const marketplace = read('src/marketplace-client.ts')
-  const settlement = read('supabase/functions/oc-cancel-booking/index.ts')
+  const client = read('src/supabase.ts'), marketplace = read('src/marketplace-client.ts'), settlement = read('supabase/functions/oc-cancel-booking/index.ts')
   assert.match(client, /oc-cancel-booking/)
   assert.match(marketplace, /action: 'quote'/)
   assert.match(marketplace, /action: 'cancel'/)
@@ -68,8 +57,7 @@ test('customer cancellation uses quote then atomic settlement instead of a direc
 })
 
 test('customer no-show settlement requires arrival, wait expiry, authorization, and idempotent partial capture', () => {
-  const host = read('src/ProviderNoShowHost.tsx')
-  const settlement = read('supabase/functions/oc-customer-no-show/index.ts')
+  const host = read('src/ProviderNoShowHost.tsx'), settlement = read('supabase/functions/oc-customer-no-show/index.ts')
   assert.match(host, /oc-customer-no-show/)
   assert.match(settlement, /b\.status==='on_site'/)
   assert.match(settlement, /remainingSeconds===0/)
@@ -79,9 +67,7 @@ test('customer no-show settlement requires arrival, wait expiry, authorization, 
 })
 
 test('Provider Command and floating offer card share one leased-offer source of truth', () => {
-  const matchHost = read('src/ProviderMatchHost.tsx')
-  const provider = read('src/ProviderCommand.tsx')
-  const migration = read('supabase/migrations/20260809030500_provider_leased_offer_single_source.sql')
+  const matchHost = read('src/ProviderMatchHost.tsx'), provider = read('src/ProviderCommand.tsx'), migration = read('supabase/migrations/20260809030500_provider_leased_offer_single_source.sql')
   assert.match(matchHost, /oc_provider_active_offers/)
   assert.match(matchHost, /EXCLUSIVE OFFER WINDOW/)
   assert.match(provider, /oc_provider_opportunities/)
@@ -91,17 +77,32 @@ test('Provider Command and floating offer card share one leased-offer source of 
   assert.doesNotMatch(migration, /oc_provider_opportunities_v2/)
 })
 
+test('visible ON CALL customer profile controls are backed by real tools', () => {
+  const main=read('src/main.tsx'), tools=read('src/CustomerProfileToolsHost.tsx'), paymentEdge=read('supabase/functions/oc-payment-methods/index.ts'), migration=read('supabase/migrations/20260809035000_finish_on_call_customer_profile_tools.sql')
+  assert.match(main,/CustomerProfileToolsHost/)
+  for(const label of ['Saved addresses','Payment methods','Recurring services']) assert.match(tools,new RegExp(label))
+  for(const rpc of ['oc_upsert_saved_address','oc_delete_saved_address','oc_set_default_address','oc_customer_set_recurring_status']) assert.match(tools,new RegExp(rpc))
+  assert.match(tools,/oc-payment-methods/)
+  assert.match(tools,/PaymentElement/)
+  assert.match(paymentEdge,/setupIntents\.create/)
+  assert.match(paymentEdge,/paymentMethods\.detach/)
+  assert.match(migration,/revoke insert,update,delete,references,trigger on public\.oc_saved_addresses from authenticated/)
+})
+
+test('authenticated marketplace clients can never TRUNCATE product tables', () => {
+  const migration=read('supabase/migrations/20260809034500_revoke_authenticated_product_truncate.sql')
+  assert.match(migration,/revoke truncate on table %s\.%s from authenticated/)
+  assert.match(migration,/oc\\_%/)
+  assert.match(migration,/sos\\_%/)
+})
+
 test('desktop layout cannot regress to a universal 460px root shell', () => {
-  const premium = read('src/premium-experience.css')
-  const rescue = read('src/root-layout-rescue.css')
-  const main = read('src/main.tsx')
+  const premium = read('src/premium-experience.css'), rescue = read('src/root-layout-rescue.css'), main = read('src/main.tsx')
   assert.doesNotMatch(premium, /\.oc-experience\s*>\s*\*\s*\{[^}]*max-width\s*:\s*460px/s)
   assert.match(rescue, /\.oc-experience\s*>\s*\.oc2-app[\s\S]*?max-width:\s*none\s*!important/)
   assert.match(rescue, /\.oc-experience\s*>\s*\.ocp-app[\s\S]*?max-width:\s*none\s*!important/)
-  const rescueImport = main.indexOf("import './root-layout-rescue.css'")
-  const marketplaceImport = main.indexOf("import './on-call-marketplace.css'")
-  const eliteImport = main.indexOf("import './elite-ui.css'")
-  assert.ok(rescueImport > marketplaceImport && rescueImport > eliteImport, 'root layout rescue must be the last app stylesheet')
+  const rescueImport = main.indexOf("import './root-layout-rescue.css'"), marketplaceImport = main.indexOf("import './on-call-marketplace.css'"), toolsImport=main.indexOf("import './customer-profile-tools.css'")
+  assert.ok(rescueImport > marketplaceImport && rescueImport > toolsImport, 'root layout rescue must be the last app stylesheet')
 })
 
 test('desktop marketplace and Provider Command cannot regress to micro-sized phone typography', () => {
