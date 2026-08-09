@@ -1,5 +1,3 @@
-.oc2-menu > button:not(.danger){display:none!important}
-
 .oc2-home-copy>p{font-size:0!important}
 .oc2-home-copy>p::after{content:'Request now, schedule later, or set it to repeat where verified provider coverage is active.';font-size:14px;line-height:1.55}
 
