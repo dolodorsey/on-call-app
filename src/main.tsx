@@ -7,11 +7,13 @@ import './on-call-marketplace.css'
 import './production-integrity.css'
 import './elite-ui.css'
 import './customer-profile-tools.css'
+import './customer-coverage-status.css'
 import './operations-command.css'
 import './provider-verification-ops.css'
 import './provider-verification-readiness.css'
 import './provider-account-activation.css'
 import './marketplace-ops-alerts.css'
+import './marketplace-launch-readiness.css'
 import './root-layout-rescue.css'
 import './account-recovery.css'
 import OnCallEntry from './OnCallEntry'
@@ -21,6 +23,10 @@ import CustomerCancellationHost from './CustomerCancellationHost'
 import CustomerSettlementReviewHost from './CustomerSettlementReviewHost'
 import CustomerProfileToolsHost from './CustomerProfileToolsHost'
 import CustomerRealtimeBridge from './CustomerRealtimeBridge'
+import CustomerReceiptHost from './CustomerReceiptHost'
+import CustomerCoverageStatusHost from './CustomerCoverageStatusHost'
+import NotificationInboxHost from './NotificationInboxHost'
+import ShareTrackingHost from './ShareTrackingHost'
 import AccountRecoveryHost from './AccountRecoveryHost'
 import AccountDeletionHost from './AccountDeletionHost'
 import PushRegistrationHost from './PushRegistrationHost'
@@ -30,7 +36,10 @@ import ProviderVerificationOpsHost from './ProviderVerificationOpsHost'
 import ProviderVerificationReadinessHost from './ProviderVerificationReadinessHost'
 import ProviderAccountActivation from './ProviderAccountActivation'
 import ProviderActivationAccessHost from './ProviderActivationAccessHost'
+import ProviderApplicationActivationLinkHost from './ProviderApplicationActivationLinkHost'
+import ProviderCustomerTrustHost from './ProviderCustomerTrustHost'
 import MarketplaceOpsAlertsHost from './MarketplaceOpsAlertsHost'
+import MarketplaceLaunchReadinessHost from './MarketplaceLaunchReadinessHost'
 import InteractionContractHost from './InteractionContractHost'
 import MarketplaceTruthHost from './MarketplaceTruthHost'
 import LegalPage from './LegalPage'
@@ -80,20 +89,21 @@ ReactDOM.createRoot(rootElement).render(
           <MarketplaceTruthHost/>
           <LegalLinksHost/>
           {isOperationsWorkspace ? (
-            <Suspense fallback={<RouteLoading/>}><><OperationsCommand/><ProviderVerificationOpsHost/><MarketplaceOpsAlertsHost/></></Suspense>
+            <Suspense fallback={<RouteLoading/>}><><OperationsCommand/><ProviderVerificationOpsHost/><MarketplaceOpsAlertsHost/><MarketplaceLaunchReadinessHost/></></Suspense>
           ) : <>
             <PaymentReadinessHost/>
             <BookingChatHost/>
             <PushRegistrationHost/>
             <AccountRecoveryHost/>
             <AccountDeletionHost/>
+            <NotificationInboxHost/>
             {isProviderActivation ? (
               <ProviderAccountActivation/>
             ) : isProviderApplication || isProviderWorkspace ? (
               <Suspense fallback={<RouteLoading />}>
-                {isProviderApplication ? <ProviderApply /> : <><ProviderActivationAccessHost/><ProviderCommand/><ProviderVerificationReadinessHost/><ProviderRealtimeBridge/><ProviderIssueHost/><ProviderMatchHost/><ProviderNoShowHost/><ProviderReliabilityHost/></>}
+                {isProviderApplication ? <><ProviderApplicationActivationLinkHost/><ProviderApply/></> : <><ProviderActivationAccessHost/><ProviderCommand/><ProviderVerificationReadinessHost/><ProviderRealtimeBridge/><ProviderIssueHost/><ProviderMatchHost/><ProviderNoShowHost/><ProviderReliabilityHost/><ProviderCustomerTrustHost/></>}
               </Suspense>
-            ) : <><OnCallEntry/><CustomerRealtimeBridge/><OnCallEnhancementHost/><CustomerOperationsHost/><CustomerCancellationHost/><CustomerSettlementReviewHost/><CustomerProfileToolsHost/></>}
+            ) : <><OnCallEntry/><CustomerCoverageStatusHost/><CustomerRealtimeBridge/><OnCallEnhancementHost/><CustomerOperationsHost/><CustomerCancellationHost/><CustomerSettlementReviewHost/><CustomerProfileToolsHost/><CustomerReceiptHost/><ShareTrackingHost/></>}
           </>}
         </>}
       </div>
