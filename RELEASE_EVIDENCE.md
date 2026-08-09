@@ -1,55 +1,97 @@
 # ON CALL Release Evidence
 
-Brand: ON CALL (kept separate from S.O.S. and all other KHG brands)
+## Product boundary
 
-## Verified in this release
+- Public product: **ON CALL**.
+- Repository: `dolodorsey/on-call-app`.
+- Primary domain: `https://oncallallday.com`.
+- Production Supabase project: `cxdqkjvtpilvouwtbgdy`.
+- Product database namespace: `oc_*` only. Shared infrastructure with S.O.S. does not merge product ownership or public branding.
 
-- Production database project: `wfkohcwxxsrhcxhepfql`.
-- Production web domain: `https://oncallallday.com`.
-- The live marketplace catalog contains 12 categories and 72 active services.
-- Customer identity is created as `customer`; browser-supplied provider roles are ignored.
-- Signup is confirmation-safe: a new account that requires email verification is no longer followed by an immediate password sign-in attempt. The UI tells the customer to confirm email and then sign in.
-- Email confirmation is no longer silently bypassed by the ON CALL signup trigger.
-- Service prices are selected on the server from the supported ON CALL catalog.
-- Customer booking requests are now market-aware and supply-gated. A booking is not created unless its ON CALL city/state is supported and verified provider supply exists for that exact service and market.
-- On-demand booking requires an on-duty verified provider. Scheduled or recurring booking requires approved provider supply.
-- Legacy booking RPCs that could bypass the market supply gate are no longer executable by anonymous or authenticated app users.
-- Provider profiles now carry their verified application market, and provider offers/acceptance are restricted to matching booking markets and approved services.
-- Customers cannot directly insert or mutate protected booking fields.
-- Customers can read only their bookings; approved providers can read only accepted bookings.
-- Available approved providers receive address-free offers and acceptance is atomic.
-- Provider transitions are server-enforced: assigned → en route → on site → working → completed.
-- Customer cancellation and ratings use ownership-checked server functions.
-- Provider applications are validated, rate-limited by email, stored in a backend-only RLS table, and forwarded to automation from an Edge Function.
-- The provider sourcing system already contains 3,000 ON CALL recruiting candidates. 113 qualified, contactable Atlanta prospects are now copied into the ON CALL recruitment funnel as `sourced` and marked outreach-ready; none are falsely marked contacted.
-- Booking-specific Stripe Connect infrastructure is deployed: manual authorization, completion-gated capture, separate provider transfer, cancellation, refunds/disputes status, signed webhook processing, and event idempotency.
-- Customer Wallet reads real bookings and payment states, offers exact-price card authorization only after provider acceptance, and supports eligible cancellation and post-completion ratings.
-- Provider earnings use recorded transfers rather than simulated totals; Connect onboarding and payout readiness are wired to the approved provider profile.
-- Fabricated booking history, card details, payout totals, ratings, testimonials, and performance claims were removed from the interface.
-- Customer-facing availability copy now distinguishes catalog eligibility from verified live provider coverage, and unfinished profile controls are not exposed as dead buttons.
-- Production web build passes and the latest Vercel production deployment is READY.
-- Current Vercel runtime audit shows no production runtime errors in the checked window.
-- Production dependency audit reports zero known vulnerabilities.
-- Capacitor iOS and Android projects are upgraded to 8.5 and synchronized from the verified production web build.
-- The iOS simulator target builds successfully on Xcode with the ON CALL app identifier and approved icon assets.
-- A distribution-signed App Store Connect IPA exports successfully for `com.khg.oncallapp` with team `AFU6P8WW9K`; its recorded SHA-256 is `7b22bb32d71951354e8e446642ae920244644d8475927b7d3065b5627d5dbf89`.
-- A complete Android project exists with ON CALL launcher artwork and the required customer-location permissions.
-- The main application passes its TypeScript check.
-- Booking/payment tables have RLS enabled; customers and assigned providers can read only their own payment records, while all writes remain server-only.
-- Unauthenticated payment-function call returns HTTP 401 and an invalid webhook signature returns HTTP 400.
-- Invalid provider application test returns HTTP 400 with the expected CORS origin and creates no record.
+## Current production data — August 9, 2026
 
-## Current activation state
+- 12 active service categories.
+- 72 active catalog services.
+- 0 ON CALL users.
+- 0 provider applications.
+- 0 provider profiles.
+- 0 bookings.
+- 0 booking payments.
 
-- ON CALL has 33 user records, 12 service categories and 72 active services in the production database.
-- There are currently 0 provider applications, 0 provider profiles, 0 approved providers, 0 on-duty providers, 0 bookings and 0 payment events in the production marketplace.
-- The 720 service/market readiness rows are therefore correctly classified as `no_approved_supply`; the app now fails closed instead of creating unfulfillable bookings.
-- 113 qualified Atlanta provider prospects are staged for outreach. They remain `queued` until outreach is actually sent and a prospect responds or applies.
+Those zero marketplace counts are reported as **market activation state**, not as proof that the software lifecycle is absent.
 
-## Deliberately not claimed complete
+## Software lifecycle proven without fabricating customer history
 
-- Marketplace activation is not complete until real providers apply, pass required verification, finish Stripe Connect onboarding, map to supported services and go on duty.
-- The payment code and database lifecycle are live, but production money movement still depends on valid live Stripe configuration and a real provider/customer transaction; no fake payment is used as proof.
-- A full authenticated customer/provider production run still requires at least one approved, payout-ready provider and a real or controlled end-to-end transaction.
-- The App Store IPA is export-verified but has not been uploaded to App Store Connect; Play Store signing remains pending the Android release toolchain.
-- Android compilation remains a workstation gate until the required Android SDK and Java toolchain are installed; the Android project itself is generated and synchronized.
+A disposable database marketplace simulation was executed against the production schema without calling Stripe and without preserving QA rows. It proved:
+
+1. A pending ON CALL request entered dispatch.
+2. Dispatch created exactly one exclusive provider lease.
+3. The leased provider accepted atomically and the booking became `assigned`.
+4. Starting travel without customer payment authorization was rejected.
+5. Adding an authorized payment state unlocked `en_route`.
+6. QA fixture cleanup was verified after the simulation.
+
+This evidence is recorded separately in the private release-evidence ledger and is **not** counted as a real customer transaction.
+
+## Marketplace controls currently implemented
+
+- Customer signup/profile and catalog browsing.
+- Market-aware service requests using server-owned catalog pricing.
+- Provider application and approval activation flow.
+- Approved-service mapping and payout/readiness gate.
+- Ranked provider matching with exclusive expiring leased offers.
+- Provider accept/decline and automatic offer expiry/reassignment.
+- Scheduled-job dispatch window and expanding search radius.
+- Exact customer location/details withheld until provider acceptance.
+- Provider GPS presence and participant-safe live customer tracking.
+- Customer/provider booking chat and persistent notifications.
+- Customer payment authorization required before provider travel.
+- Server-enforced job transitions: `assigned → en_route → on_site → working → completed`.
+- Completion uses idempotent Stripe capture logic and provider payout lifecycle.
+- Config-driven late cancellation and customer no-show settlement.
+- Provider release/reassignment, start watchdog, stale-GPS warning/escalation, incidents, reliability review, and fee-review workflows.
+- Provider earnings are ledger-backed; exceptional settlements are identified separately from normal service revenue.
+
+## Automated verification
+
+`npm run verify` now requires all of the following:
+
+- TypeScript type-check.
+- Node automated regression tests.
+- Production Vite build.
+- Critical production dependency audit.
+
+The regression suite covers the dedicated Provider Command route, payment-gated completion, cancellation/no-show settlement contracts, leased-offer dispatch, desktop shell/layout regressions, desktop readability, shared-backend project pinning, and removal of n8n from the active client lifecycle.
+
+The stricter gate exposed compile errors that the earlier build-only standard had missed; those errors were fixed rather than excluded from verification.
+
+## UI verification
+
+- The prior production stylesheet incorrectly constrained root product surfaces to a 460px phone shell on desktop. That blanket selector was removed.
+- The final, last-loaded desktop rescue stylesheet explicitly makes the customer marketplace and Provider Command full-width while keeping authentication appropriately focused.
+- Desktop service/card/metadata typography was increased so the desktop product no longer inherits 7–11px phone-scale copy.
+- The exact CSS bundle served by `oncallallday.com` was fetched after deployment and contains these final overrides.
+
+A full external Chromium screenshot session is not claimed here because outbound browser networking is unavailable in the current verification environment. Bundle-level production verification, HTTP route checks, CI, database lifecycle tests, and runtime logging are used instead.
+
+## Shared-backend isolation
+
+The server-only namespace audit currently reports:
+
+- zero `oc_* ↔ sos_*` foreign keys;
+- zero public ON CALL/S.O.S. product tables with RLS disabled;
+- zero anonymous/public direct INSERT, UPDATE, DELETE, or TRUNCATE grants on product tables;
+- zero cross-prefix database-function references.
+
+Anonymous execution was also removed from the provider leased-offer SECURITY DEFINER RPC.
+
+## Release hygiene
+
+A private release-hygiene audit now fails if `qa-*`, `example.invalid`, or QA-address fixtures remain in ON CALL/S.O.S. marketplace tables. Existing stale QA fixtures found during this repair were removed. Current hygiene result: zero QA fixtures.
+
+## Not claimed
+
+- ON CALL is **not market-proven yet**: there are no real customers, approved providers, completed bookings, ratings, or live payment history in the ON CALL marketplace.
+- No fake production booking, rating, earnings history, or Stripe charge is retained to make the marketplace look active.
+- A real live-money transaction still requires a real approved payout-ready provider and customer payment method.
+- Store distribution status is separate from web/software readiness and should be evaluated from the current iOS/Android release workflows rather than inferred from web deployment status.
