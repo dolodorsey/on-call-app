@@ -48,6 +48,25 @@ test('customer payment authorization requires both Stripe client and server read
   assert.match(shared,/STRIPE_SECRET_KEY/)
 })
 
+test('provider payout onboarding uses Stripe Accounts v2 recipient capability only', () => {
+  const connect=read('supabase/functions/oc-connect-onboarding/index.ts')
+  const migration=read('supabase/migrations/20260809050000_add_marketplace_stripe_accounts_v2_status.sql')
+  assert.match(connect,/2026-06-24\.dahlia/)
+  assert.match(connect,/\/v2\/core\/accounts/)
+  assert.match(connect,/\/v2\/core\/account_links/)
+  assert.match(connect,/configuration:\{recipient:/)
+  assert.match(connect,/stripe_transfers:\{requested:true\}/)
+  assert.match(connect,/fees_collector:'application'/)
+  assert.match(connect,/losses_collector:'application'/)
+  assert.match(connect,/dashboard:'express'/)
+  assert.match(connect,/stripe_account_api_version:'v2'/)
+  assert.match(connect,/stripe_transfer_status/)
+  assert.doesNotMatch(connect,/accounts\.create\(/)
+  assert.doesNotMatch(connect,/type:\s*["']express["']/)
+  assert.doesNotMatch(connect,/charges_enabled/)
+  assert.match(migration,/stripe_account_api_version/)
+})
+
 test('customer cancellation uses quote then atomic settlement instead of a direct booking mutation', () => {
   const client = read('src/supabase.ts'), marketplace = read('src/marketplace-client.ts'), settlement = read('supabase/functions/oc-cancel-booking/index.ts')
   assert.match(client, /oc-cancel-booking/)
