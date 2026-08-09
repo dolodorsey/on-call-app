@@ -18,7 +18,7 @@
 - 0 bookings.
 - 0 booking payments.
 
-Those zero marketplace counts are reported as **market activation state**, not as proof that the software lifecycle is absent.
+Those zero marketplace counts are **market activation state**, not proof that the software lifecycle is absent.
 
 ## Software lifecycle proven without fabricating customer history
 
@@ -31,14 +31,51 @@ A disposable database marketplace simulation was executed against the production
 5. Adding an authorized payment state unlocked `en_route`.
 6. QA fixture cleanup was verified after the simulation.
 
-This evidence is recorded separately in the private release-evidence ledger and is **not** counted as a real customer transaction.
+A second disposable provider-verification simulation proved the provider activation boundary:
+
+1. Application approval left `background_check_status = pending`; approval no longer fabricates clearance.
+2. Approved-but-unverified provider core readiness remained `false`.
+3. Passing identity, background, skills, and service-area checks unlocked an ordinary approved cleaning service.
+4. Plumbing remained blocked because that service requires conditional license and insurance verification.
+5. Passing license + insurance made plumbing dispatch-ready.
+6. The entire verification simulation rolled back and left zero auth/user/application/provider QA rows.
+
+This evidence is release QA and is **not** counted as real marketplace activity.
+
+## Provider verification model
+
+Application approval now means **workspace access**, not “verified provider.” A provider may enter Provider Command after an approved same-email activation, but actual dispatch uses a separate verification ledger.
+
+Required core checks:
+
+- identity;
+- background;
+- skills;
+- service area;
+- vehicle when the application says a vehicle is required.
+
+Core identity/background/skills/service-area checks cannot be waived.
+
+License and insurance are service-specific. Services such as plumbing, electrical, HVAC, notary, massage and other regulated/risk-bearing categories require the applicable check before that service can dispatch. Conditional requirements can be explicitly waived only when an operator determines the requirement legitimately does not apply.
+
+The same server-side readiness helpers govern:
+
+- going online;
+- provider opportunity visibility;
+- active leased offers;
+- offer acceptance;
+- dispatcher provider selection;
+- Provider Command readiness counts.
+
+`/ops` now contains an operator verification queue for review/pass/fail of real provider checks. Provider Command shows the same database-backed readiness state and suppresses the old generic “go online” control until at least one approved service is genuinely dispatch-ready.
 
 ## Marketplace controls currently implemented
 
 - Customer signup/profile and catalog browsing.
 - Market-aware service requests using server-owned catalog pricing.
-- Provider application and approval activation flow.
-- Approved-service mapping and payout/readiness gate.
+- Provider application and approved-account activation flow.
+- Real provider verification ledger and service-specific credential gates.
+- Approved-service mapping and Stripe payout readiness gate.
 - Ranked provider matching with exclusive expiring leased offers.
 - Provider accept/decline and automatic offer expiry/reassignment.
 - Scheduled-job dispatch window and expanding search radius.
@@ -51,47 +88,71 @@ This evidence is recorded separately in the private release-evidence ledger and 
 - Config-driven late cancellation and customer no-show settlement.
 - Provider release/reassignment, start watchdog, stale-GPS warning/escalation, incidents, reliability review, and fee-review workflows.
 - Provider earnings are ledger-backed; exceptional settlements are identified separately from normal service revenue.
+- Customer profile tools are functional for saved addresses, payment methods, and recurring services.
 
 ## Automated verification
 
-`npm run verify` now requires all of the following:
+`npm run verify` requires:
 
-- TypeScript type-check.
-- Node automated regression tests.
-- Production Vite build.
-- Critical production dependency audit.
+- TypeScript type-check;
+- Node automated regression tests;
+- production Vite build;
+- critical production dependency audit.
 
-The regression suite covers the dedicated Provider Command route, payment-gated completion, cancellation/no-show settlement contracts, leased-offer dispatch, desktop shell/layout regressions, desktop readability, shared-backend project pinning, and removal of n8n from the active client lifecycle.
+Regression coverage includes:
 
-The stricter gate exposed compile errors that the earlier build-only standard had missed; those errors were fixed rather than excluded from verification.
+- dedicated Provider Command routing;
+- payment-gated completion;
+- cancellation/no-show settlement contracts;
+- leased-offer dispatch;
+- provider application/verification separation;
+- authenticated provider identity requirement;
+- central service-aware dispatch-readiness reuse;
+- operator/provider verification UIs;
+- desktop shell/layout and readability regressions;
+- shared-backend project pinning;
+- active lifecycle independence from n8n.
+
+The stricter gate exposed compile errors that the earlier build-only standard had missed; those errors were fixed rather than excluded.
 
 ## UI verification
 
 - The prior production stylesheet incorrectly constrained root product surfaces to a 460px phone shell on desktop. That blanket selector was removed.
-- The final, last-loaded desktop rescue stylesheet explicitly makes the customer marketplace and Provider Command full-width while keeping authentication appropriately focused.
-- Desktop service/card/metadata typography was increased so the desktop product no longer inherits 7–11px phone-scale copy.
-- The exact CSS bundle served by `oncallallday.com` was fetched after deployment and contains these final overrides.
-
-A full external Chromium screenshot session is not claimed here because outbound browser networking is unavailable in the current verification environment. Bundle-level production verification, HTTP route checks, CI, database lifecycle tests, and runtime logging are used instead.
+- The final desktop rescue stylesheet explicitly makes the customer marketplace and Provider Command full-width while keeping authentication appropriately focused.
+- Desktop service/card/metadata typography was increased so desktop no longer inherits phone-scale copy.
+- Customer profile tools, Provider Command readiness, and operator verification controls are mounted in the production build.
 
 ## Shared-backend isolation
 
 The server-only namespace audit currently reports:
 
 - zero `oc_* ↔ sos_*` foreign keys;
-- zero public ON CALL/S.O.S. product tables with RLS disabled;
+- zero public product tables with RLS disabled;
 - zero anonymous/public direct INSERT, UPDATE, DELETE, or TRUNCATE grants on product tables;
+- zero authenticated TRUNCATE grants;
 - zero cross-prefix database-function references.
 
-Anonymous execution was also removed from the provider leased-offer SECURITY DEFINER RPC.
+Anonymous execution is removed from leased-offer/security-definer provider paths.
 
 ## Release hygiene
 
-A private release-hygiene audit now fails if `qa-*`, `example.invalid`, or QA-address fixtures remain in ON CALL/S.O.S. marketplace tables. Existing stale QA fixtures found during this repair were removed. Current hygiene result: zero QA fixtures.
+A private release-hygiene audit fails if `qa-*`, `example.invalid`, or QA-address fixtures remain in ON CALL/S.O.S. marketplace tables. Current result: **zero QA fixtures**.
+
+## Payment/runtime truth
+
+The production `marketplace-payments-health` endpoint currently returns **HTTP 503**:
+
+- `ready: false`
+- `stripe_server_credential: false`
+- `webhook_signature_secret: true`
+- Stripe credential source: missing
+- webhook credential source: Vault
+
+Therefore live charges, captures, provider payout onboarding, and transfers remain intentionally fail-closed before Stripe is called. The software lifecycle is ready for the credential, but the missing authorized Stripe server secret is not something application code can manufacture.
 
 ## Not claimed
 
-- ON CALL is **not market-proven yet**: there are no real customers, approved providers, completed bookings, ratings, or live payment history in the ON CALL marketplace.
-- No fake production booking, rating, earnings history, or Stripe charge is retained to make the marketplace look active.
-- A real live-money transaction still requires a real approved payout-ready provider and customer payment method.
-- Store distribution status is separate from web/software readiness and should be evaluated from the current iOS/Android release workflows rather than inferred from web deployment status.
+- ON CALL is **not market-proven yet**: there are no real customers, provider applications, approved dispatch-ready providers, completed bookings, ratings, or live payment history.
+- No fake production booking, provider, verification, rating, earnings history, or Stripe charge is retained to make the marketplace look active.
+- A real live-money transaction still requires the authorized Stripe server credential, a real verified payout-ready provider, and a real customer payment method.
+- Store distribution status is separate from web/software readiness.
