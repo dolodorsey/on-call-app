@@ -7,6 +7,7 @@ import './on-call-marketplace.css'
 import './production-integrity.css'
 import './elite-ui.css'
 import './customer-profile-tools.css'
+import './operations-command.css'
 import './root-layout-rescue.css'
 import OnCallEntry from './OnCallEntry'
 import OnCallEnhancementHost from './OnCallEnhancementHost'
@@ -25,10 +26,12 @@ const ProviderMatchHost = lazy(() => import('./ProviderMatchHost'))
 const ProviderNoShowHost = lazy(() => import('./ProviderNoShowHost'))
 const ProviderReliabilityHost = lazy(() => import('./ProviderReliabilityHost'))
 const ProviderApply = lazy(() => import('../components/ProviderApply'))
+const OperationsCommand = lazy(() => import('./OperationsCommand'))
 
 const pathname = window.location.pathname.replace(/\/$/, '') || '/'
 const isProviderApplication = pathname === '/apply'
 const isProviderWorkspace = pathname === '/provider'
+const isOperationsWorkspace = pathname === '/ops'
 
 class RuntimeBoundary extends React.Component<React.PropsWithChildren, { hasError: boolean }> {
   state = { hasError: false }
@@ -41,7 +44,7 @@ class RuntimeBoundary extends React.Component<React.PropsWithChildren, { hasErro
 }
 
 function RouteLoading() {
-  const label = isProviderApplication ? 'Opening provider application' : 'Opening Provider Command'
+  const label = isOperationsWorkspace ? 'Opening Marketplace Operations' : isProviderApplication ? 'Opening provider application' : 'Opening Provider Command'
   return <div className="oc-route-loading" role="status" aria-live="polite"><div className="oc-route-loading__mark">OC</div><div className="oc-route-loading__pulse"/><span>{label}</span></div>
 }
 
@@ -52,13 +55,17 @@ ReactDOM.createRoot(rootElement).render(
   <React.StrictMode>
     <RuntimeBoundary>
       <div className="oc-experience" data-app="on-call">
-        <PaymentReadinessHost/>
-        <BookingChatHost/>
-        {isProviderApplication || isProviderWorkspace ? (
-          <Suspense fallback={<RouteLoading />}>
-            {isProviderApplication ? <ProviderApply /> : <><ProviderCommand/><ProviderRealtimeBridge/><ProviderIssueHost/><ProviderMatchHost/><ProviderNoShowHost/><ProviderReliabilityHost/></>}
-          </Suspense>
-        ) : <><OnCallEntry/><CustomerRealtimeBridge/><OnCallEnhancementHost/><CustomerOperationsHost/><CustomerCancellationHost/><CustomerSettlementReviewHost/><CustomerProfileToolsHost/></>}
+        {isOperationsWorkspace ? (
+          <Suspense fallback={<RouteLoading/>}><OperationsCommand/></Suspense>
+        ) : <>
+          <PaymentReadinessHost/>
+          <BookingChatHost/>
+          {isProviderApplication || isProviderWorkspace ? (
+            <Suspense fallback={<RouteLoading />}>
+              {isProviderApplication ? <ProviderApply /> : <><ProviderCommand/><ProviderRealtimeBridge/><ProviderIssueHost/><ProviderMatchHost/><ProviderNoShowHost/><ProviderReliabilityHost/></>}
+            </Suspense>
+          ) : <><OnCallEntry/><CustomerRealtimeBridge/><OnCallEnhancementHost/><CustomerOperationsHost/><CustomerCancellationHost/><CustomerSettlementReviewHost/><CustomerProfileToolsHost/></>}
+        </>}
       </div>
     </RuntimeBoundary>
   </React.StrictMode>,
