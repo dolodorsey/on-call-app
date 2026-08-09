@@ -15,6 +15,7 @@ const ProviderCommand = lazy(() => import('./ProviderCommand'))
 const ProviderRealtimeBridge = lazy(() => import('./ProviderRealtimeBridge'))
 const ProviderIssueHost = lazy(() => import('./ProviderIssueHost'))
 const ProviderMatchHost = lazy(() => import('./ProviderMatchHost'))
+const ProviderNoShowHost = lazy(() => import('./ProviderNoShowHost'))
 const ProviderApply = lazy(() => import('../components/ProviderApply'))
 
 const pathname = window.location.pathname.replace(/\/$/, '') || '/'
@@ -45,7 +46,7 @@ ReactDOM.createRoot(rootElement).render(
       <div className="oc-experience" data-app="on-call">
         {isProviderApplication || isProviderWorkspace ? (
           <Suspense fallback={<RouteLoading />}>
-            {isProviderApplication ? <ProviderApply /> : <><ProviderCommand/><ProviderRealtimeBridge/><ProviderIssueHost/><ProviderMatchHost/></>}
+            {isProviderApplication ? <ProviderApply /> : <><ProviderCommand/><ProviderRealtimeBridge/><ProviderIssueHost/><ProviderMatchHost/><ProviderNoShowHost/></>}
           </Suspense>
         ) : <><OnCallEntry/><OnCallEnhancementHost/><CustomerOperationsHost/><CustomerCancellationHost/></>}
       </div>
