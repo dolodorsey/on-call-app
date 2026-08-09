@@ -6,12 +6,14 @@ import './runtime.css'
 import './on-call-marketplace.css'
 import './production-integrity.css'
 import './elite-ui.css'
+import './customer-profile-tools.css'
 import './root-layout-rescue.css'
 import OnCallEntry from './OnCallEntry'
 import OnCallEnhancementHost from './OnCallEnhancementHost'
 import CustomerOperationsHost from './CustomerOperationsHost'
 import CustomerCancellationHost from './CustomerCancellationHost'
 import CustomerSettlementReviewHost from './CustomerSettlementReviewHost'
+import CustomerProfileToolsHost from './CustomerProfileToolsHost'
 import PaymentReadinessHost from './PaymentReadinessHost'
 import BookingChatHost from './BookingChatHost'
 
@@ -55,7 +57,7 @@ ReactDOM.createRoot(rootElement).render(
           <Suspense fallback={<RouteLoading />}>
             {isProviderApplication ? <ProviderApply /> : <><ProviderCommand/><ProviderRealtimeBridge/><ProviderIssueHost/><ProviderMatchHost/><ProviderNoShowHost/><ProviderReliabilityHost/></>}
           </Suspense>
-        ) : <><OnCallEntry/><OnCallEnhancementHost/><CustomerOperationsHost/><CustomerCancellationHost/><CustomerSettlementReviewHost/></>}
+        ) : <><OnCallEntry/><OnCallEnhancementHost/><CustomerOperationsHost/><CustomerCancellationHost/><CustomerSettlementReviewHost/><CustomerProfileToolsHost/></>}
       </div>
     </RuntimeBoundary>
   </React.StrictMode>,
