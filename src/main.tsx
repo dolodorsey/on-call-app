@@ -12,6 +12,7 @@ import CustomerOperationsHost from './CustomerOperationsHost'
 import CustomerCancellationHost from './CustomerCancellationHost'
 import CustomerSettlementReviewHost from './CustomerSettlementReviewHost'
 import PaymentReadinessHost from './PaymentReadinessHost'
+import BookingChatHost from './BookingChatHost'
 
 const ProviderCommand = lazy(() => import('./ProviderCommand'))
 const ProviderRealtimeBridge = lazy(() => import('./ProviderRealtimeBridge'))
@@ -48,6 +49,7 @@ ReactDOM.createRoot(rootElement).render(
     <RuntimeBoundary>
       <div className="oc-experience" data-app="on-call">
         <PaymentReadinessHost/>
+        <BookingChatHost/>
         {isProviderApplication || isProviderWorkspace ? (
           <Suspense fallback={<RouteLoading />}>
             {isProviderApplication ? <ProviderApply /> : <><ProviderCommand/><ProviderRealtimeBridge/><ProviderIssueHost/><ProviderMatchHost/><ProviderNoShowHost/><ProviderReliabilityHost/></>}
