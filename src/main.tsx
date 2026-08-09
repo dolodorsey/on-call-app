@@ -11,7 +11,9 @@ import './operations-command.css'
 import './provider-verification-ops.css'
 import './provider-verification-readiness.css'
 import './root-layout-rescue.css'
+import './current-media.css'
 import OnCallEntry from './OnCallEntry'
+import OnCallCurrentMediaHero from './OnCallCurrentMediaHero'
 import OnCallEnhancementHost from './OnCallEnhancementHost'
 import CustomerOperationsHost from './CustomerOperationsHost'
 import CustomerCancellationHost from './CustomerCancellationHost'
@@ -70,7 +72,7 @@ ReactDOM.createRoot(rootElement).render(
             <Suspense fallback={<RouteLoading />}>
               {isProviderApplication ? <ProviderApply /> : <><ProviderCommand/><ProviderVerificationReadinessHost/><ProviderRealtimeBridge/><ProviderIssueHost/><ProviderMatchHost/><ProviderNoShowHost/><ProviderReliabilityHost/></>}
             </Suspense>
-          ) : <><OnCallEntry/><CustomerRealtimeBridge/><OnCallEnhancementHost/><CustomerOperationsHost/><CustomerCancellationHost/><CustomerSettlementReviewHost/><CustomerProfileToolsHost/></>}
+          ) : <><OnCallCurrentMediaHero/><OnCallEntry/><CustomerRealtimeBridge/><OnCallEnhancementHost/><CustomerOperationsHost/><CustomerCancellationHost/><CustomerSettlementReviewHost/><CustomerProfileToolsHost/></>}
         </>}
       </div>
     </RuntimeBoundary>
