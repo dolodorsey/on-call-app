@@ -50,10 +50,18 @@ export type MarketplaceBooking = {
     id: string
     rating: number | null
     total_jobs: number | null
-    user?: {
-      full_name: string | null
-    } | null
+    user?: { full_name: string | null } | null
   } | null
+}
+
+export type CancellationQuote = {
+  bookingId: string
+  status: string
+  canCancel: boolean
+  feeAmount: number
+  providerCompensation: number
+  reason: string
+  policyVersion: number
 }
 
 type ServiceMarket = { city: string; state: string; aliases: string[] }
@@ -92,10 +100,7 @@ export async function loadMarketplaceCatalog() {
   ])
   if (categoriesResult.error) throw categoriesResult.error
   if (servicesResult.error) throw servicesResult.error
-  return {
-    categories: (categoriesResult.data || []) as MarketplaceCategory[],
-    services: (servicesResult.data || []) as MarketplaceService[],
-  }
+  return { categories: (categoriesResult.data || []) as MarketplaceCategory[], services: (servicesResult.data || []) as MarketplaceService[] }
 }
 
 export async function loadMarketplaceProfile(authId: string) {
@@ -124,10 +129,7 @@ export async function createMarketplaceBooking(input: {
   notes?: string | null
 }) {
   const market = resolveServiceMarket(input.address)
-  if (!market) {
-    throw new Error('Enter a full service address including a supported ON CALL city and state, such as Atlanta, GA.')
-  }
-
+  if (!market) throw new Error('Enter a full service address including a supported ON CALL city and state, such as Atlanta, GA.')
   const { data, error } = await supabase.rpc('oc_request_market_service', {
     p_service_id: input.serviceId,
     p_address: input.address,
@@ -143,15 +145,33 @@ export async function createMarketplaceBooking(input: {
   return data as MarketplaceBooking
 }
 
-export async function cancelMarketplaceBooking(bookingId: string) {
-  const { data, error } = await supabase.rpc('oc_customer_cancel', { p_booking_id: bookingId })
+export async function getMarketplaceCancellationQuote(bookingId: string) {
+  const { data, error } = await supabase.functions.invoke('oc-cancel-booking', { body: { bookingId, action: 'quote' } })
   if (error) throw error
-  const { data: payment } = await supabase.from('oc_booking_payments').select('id,status').eq('booking_id', bookingId).maybeSingle()
-  if (payment && !['captured','transferred','partially_refunded','refunded','canceled'].includes(payment.status)) {
-    const result = await supabase.functions.invoke('oc-cancel-payment', { body: { bookingId } })
-    if (result.error) throw new Error(`Booking canceled, but payment authorization needs attention: ${result.error.message}`)
-  }
-  return data as MarketplaceBooking
+  if (data?.error) throw new Error(data.error)
+  return data as CancellationQuote
+}
+
+export async function cancelMarketplaceBooking(bookingId: string) {
+  const quote = await getMarketplaceCancellationQuote(bookingId)
+  if (!quote.canCancel) throw new Error(quote.reason || 'Booking can no longer be self-canceled.')
+  const fee = Number(quote.feeAmount || 0)
+  const message = fee > 0
+    ? `Cancel this service for a $${fee.toFixed(2)} late cancellation fee?\n\n${quote.reason}. $${Number(quote.providerCompensation || 0).toFixed(2)} of the fee is allocated to provider compensation.`
+    : `Cancel this ON CALL service at no charge?\n\n${quote.reason}.`
+  if (!window.confirm(message)) throw new Error('Cancellation was not confirmed.')
+  const { data, error } = await supabase.functions.invoke('oc-cancel-booking', {
+    body: { bookingId, action: 'cancel', expectedFeeAmount: fee, reason: quote.reason },
+  })
+  if (error) throw error
+  if (data?.error) throw new Error(data.error)
+  const { data: booking, error: refreshError } = await supabase
+    .from('oc_bookings')
+    .select('*,provider:oc_provider_profiles!oc_bookings_provider_id_fkey(id,rating,total_jobs,user:oc_users!oc_provider_profiles_user_id_fkey(full_name))')
+    .eq('id', bookingId)
+    .single()
+  if (refreshError) throw refreshError
+  return booking as MarketplaceBooking
 }
 
 export async function rateMarketplaceBooking(bookingId: string, rating: number) {
@@ -161,14 +181,5 @@ export async function rateMarketplaceBooking(bookingId: string, rating: number) 
 }
 
 export function bookingStage(status: string) {
-  return ({
-    pending: 'requested',
-    matching: 'matching',
-    assigned: 'assigned',
-    en_route: 'en_route',
-    on_site: 'on_site',
-    working: 'working',
-    completed: 'completed',
-    canceled: 'canceled',
-  } as Record<string,string>)[status] || 'requested'
+  return ({ pending:'requested',matching:'matching',assigned:'assigned',en_route:'en_route',on_site:'on_site',working:'working',completed:'completed',canceled:'canceled' } as Record<string,string>)[status] || 'requested'
 }
