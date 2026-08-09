@@ -14,15 +14,17 @@ test('ON CALL account recovery is mounted across customer and provider auth surf
   assert.match(recovery,/\.oc2-auth-panel,\.ocp-auth-card,\.ocpa-card/)
 })
 
-test('shared webhook reconciles ON CALL Accounts v2 instead of ignoring them', () => {
-  const webhook=read('supabase/functions/stripe-webhook/index.ts')
+test('signed Stripe Accounts v2 webhook owns ON CALL payout readiness', () => {
+  const webhook=read('supabase/functions/stripe-v2-account-webhook/index.ts')
+  const legacy=read('supabase/functions/stripe-webhook/index.ts')
   assert.match(webhook,/2026-06-24\.dahlia/)
   assert.match(webhook,/\/v2\/core\/accounts\//)
-  assert.match(webhook,/stripe_account_api_version==='v2'/)
-  assert.match(webhook,/stripe_transfer_status:transfers/)
+  assert.match(webhook,/STRIPE_V2_ACCOUNT_WEBHOOK_SECRET/)
+  assert.match(webhook,/stripe_transfer_status:status/)
   assert.match(webhook,/stripe_requirements_due:requirements/)
   assert.match(webhook,/stripe_payouts_enabled:ready/)
-  assert.doesNotMatch(webhook,/ignored_legacy_account_snapshot:true/)
+  assert.match(legacy,/stripe_account_api_version==='v2'/)
+  assert.match(legacy,/ignored_legacy_account_snapshot:true/)
 })
 
 test('ON CALL iOS delivery is automated and builds the Capacitor SPM xcodeproj', () => {
