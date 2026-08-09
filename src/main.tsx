@@ -12,6 +12,7 @@ import './provider-verification-ops.css'
 import './provider-verification-readiness.css'
 import './root-layout-rescue.css'
 import './current-media.css'
+import './account-recovery.css'
 import OnCallEntry from './OnCallEntry'
 import OnCallCurrentMediaHero from './OnCallCurrentMediaHero'
 import OnCallEnhancementHost from './OnCallEnhancementHost'
@@ -20,7 +21,7 @@ import CustomerCancellationHost from './CustomerCancellationHost'
 import CustomerSettlementReviewHost from './CustomerSettlementReviewHost'
 import CustomerProfileToolsHost from './CustomerProfileToolsHost'
 import CustomerRealtimeBridge from './CustomerRealtimeBridge'
-import CustomerRecoveryHost from './CustomerRecoveryHost'
+import AccountRecoveryHost from './AccountRecoveryHost'
 import PushRegistrationHost from './PushRegistrationHost'
 import PaymentReadinessHost from './PaymentReadinessHost'
 import BookingChatHost from './BookingChatHost'
@@ -69,7 +70,7 @@ ReactDOM.createRoot(rootElement).render(
           <PaymentReadinessHost/>
           <BookingChatHost/>
           <PushRegistrationHost/>
-          <CustomerRecoveryHost/>
+          <AccountRecoveryHost/>
           {isProviderApplication || isProviderWorkspace ? (
             <Suspense fallback={<RouteLoading />}>
               {isProviderApplication ? <ProviderApply /> : <><ProviderCommand/><ProviderVerificationReadinessHost/><ProviderRealtimeBridge/><ProviderIssueHost/><ProviderMatchHost/><ProviderNoShowHost/><ProviderReliabilityHost/></>}
