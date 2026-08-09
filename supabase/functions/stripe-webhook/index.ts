@@ -2,8 +2,12 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import Stripe from 'npm:stripe@18.5.0'
 import { createClient } from 'npm:@supabase/supabase-js@2.112.0'
 
+const STRIPE_V2_VERSION='2026-06-24.dahlia'
 const allowedSubscriptionStatus=(status:string)=>['active','past_due','canceled','trialing','paused'].includes(status)?status:(status==='unpaid'||status==='incomplete_expired'?'canceled':'past_due')
 const period=(subscription:any,key:'start'|'end')=>{const direct=key==='start'?subscription?.current_period_start:subscription?.current_period_end;const item=key==='start'?subscription?.items?.data?.[0]?.current_period_start:subscription?.items?.data?.[0]?.current_period_end;const value=direct||item;return value?new Date(value*1000).toISOString():null}
+const dueList=(account:any)=>account?.requirements?.summary?.currently_due??account?.requirements?.currently_due??[]
+const transferStatus=(account:any)=>account?.configuration?.recipient?.capabilities?.stripe_balance?.stripe_transfers?.status||'inactive'
+const fetchV2Account=async(key:string,accountId:string)=>{const response=await fetch(`https://api.stripe.com/v2/core/accounts/${encodeURIComponent(accountId)}?include[]=configuration.recipient&include[]=requirements`,{headers:{Authorization:`Bearer ${key}`,'Stripe-Version':STRIPE_V2_VERSION}});const data=await response.json().catch(()=>({}));if(!response.ok)throw new Error(data?.error?.message||data?.error||`Stripe v2 account fetch failed (${response.status})`);return data}
 
 Deno.serve(async(req)=>{
  if(req.method!=='POST')return new Response('Method not allowed',{status:405})
@@ -15,16 +19,28 @@ Deno.serve(async(req)=>{
  const body=await req.text(),sig=req.headers.get('stripe-signature')||'';let event:Stripe.Event
  try{event=await stripe.webhooks.constructEventAsync(body,sig,webhookSecret)}catch{return new Response('Invalid signature',{status:400})}
  const object=event.data.object as any;const intentId=object?.object==='payment_intent'?object.id:(typeof object?.payment_intent==='string'?object.payment_intent:null)
+ const accountId=event.type==='account.updated'&&object?.id?String(object.id):null
  const onCallByMetadata=object?.metadata?.brand==='ON_CALL'||object?.metadata?.brand==='on_call'||Boolean(object?.metadata?.booking_id)
  const{data:ocPayment}=intentId?await admin.from('oc_booking_payments').select('*,provider:oc_provider_profiles!oc_booking_payments_provider_id_fkey(stripe_account_id,stripe_payouts_enabled,stripe_account_api_version,stripe_transfer_status)').eq('stripe_payment_intent_id',intentId).maybeSingle():{data:null}
- const isOnCall=onCallByMetadata||Boolean(ocPayment)||(event.type==='account.updated'&&(object?.metadata?.brand==='ON_CALL'||object?.metadata?.brand==='on_call'))
+ const [{data:ocAccountProvider},{data:sosAccountHero}]=accountId?await Promise.all([
+   admin.from('oc_provider_profiles').select('id,stripe_account_api_version').eq('stripe_account_id',accountId).maybeSingle(),
+   admin.from('sos_heroes').select('id,stripe_connect_api_version').eq('stripe_connect_id',accountId).maybeSingle()
+ ]):[{data:null},{data:null}]
+ const isOnCall=onCallByMetadata||Boolean(ocPayment)||Boolean(ocAccountProvider)||(event.type==='account.updated'&&(object?.metadata?.brand==='ON_CALL'||object?.metadata?.brand==='on_call'))
 
  if(isOnCall){
   let duplicate=false;const{error:eventError}=await admin.from('oc_payment_events').insert({stripe_event_id:event.id,event_type:event.type,payment_id:ocPayment?.id??null,livemode:event.livemode,payload:event});if(eventError?.code==='23505')duplicate=true;else if(eventError)return new Response('ON CALL event ledger unavailable',{status:500})
-  if(event.type==='account.updated'&&object.id){
-    const{data:provider}=await admin.from('oc_provider_profiles').select('stripe_account_api_version').eq('stripe_account_id',object.id).maybeSingle()
-    if(provider?.stripe_account_api_version==='v2')return Response.json({received:true,duplicate,brand:'ON_CALL',ignored_legacy_account_snapshot:true})
-    await admin.from('oc_provider_profiles').update({stripe_charges_enabled:Boolean(object.charges_enabled),stripe_payouts_enabled:Boolean(object.payouts_enabled),stripe_onboarding_complete:Boolean(object.details_submitted&&object.payouts_enabled),updated_at:new Date().toISOString()}).eq('stripe_account_id',object.id)
+  if(event.type==='account.updated'&&accountId){
+    const provider=ocAccountProvider
+    if(provider?.stripe_account_api_version==='v2'){
+      if(!stripeKey)return new Response('ON CALL v2 account event recorded; payout reconciliation awaits Stripe API credential restoration',{status:503})
+      try{
+        const account=await fetchV2Account(stripeKey,accountId);const transfers=transferStatus(account);const requirements=dueList(account);const ready=transfers==='active'
+        await admin.from('oc_provider_profiles').update({stripe_transfer_status:transfers,stripe_requirements_due:requirements,stripe_onboarding_complete:ready,stripe_payouts_enabled:ready,updated_at:new Date().toISOString()}).eq('id',provider.id)
+        return Response.json({received:true,duplicate,brand:'ON_CALL',account_api:'v2',payout_ready:ready,transfer_status:transfers,requirements_due:requirements.length})
+      }catch(error){console.error('ON CALL v2 account reconciliation failed',error);return new Response('ON CALL payout account reconciliation retry required',{status:503})}
+    }
+    await admin.from('oc_provider_profiles').update({stripe_charges_enabled:Boolean(object.charges_enabled),stripe_payouts_enabled:Boolean(object.payouts_enabled),stripe_onboarding_complete:Boolean(object.details_submitted&&object.payouts_enabled),updated_at:new Date().toISOString()}).eq('stripe_account_id',accountId)
     return Response.json({received:true,duplicate,brand:'ON_CALL',legacy_account_sync:true})
   }
   if(ocPayment){
@@ -47,6 +63,18 @@ Deno.serve(async(req)=>{
  }
 
  let duplicate=false;const{error:ledgerError}=await admin.from('sos_stripe_events').insert({event_id:event.id,event_type:event.type,livemode:event.livemode,object_id:object?.id,payload:{created:event.created}});if(ledgerError?.code==='23505')duplicate=true;else if(ledgerError)return new Response('Event ledger unavailable',{status:500})
+ if(event.type==='account.updated'&&accountId&&sosAccountHero){
+   if(sosAccountHero.stripe_connect_api_version==='v2'){
+     if(!stripeKey)return new Response('SOS v2 account event recorded; payout reconciliation awaits Stripe API credential restoration',{status:503})
+     try{
+       const account=await fetchV2Account(stripeKey,accountId);const transfers=transferStatus(account);const requirements=dueList(account);const ready=transfers==='active';const now=new Date().toISOString()
+       await admin.from('sos_heroes').update({stripe_transfer_status:transfers,stripe_requirements_due:requirements,payout_method:'stripe_connect',updated_at:now}).eq('id',sosAccountHero.id)
+       await admin.from('sos_hero_verification_checks').upsert({hero_id:sosAccountHero.id,check_type:'payout_account',required:true,status:ready?'passed':'submitted',notes:ready?'Stripe transfers active.':`Stripe payout requirements remaining: ${requirements.length}.`,reviewed_by:'stripe',reviewed_at:ready?now:null,updated_at:now},{onConflict:'hero_id,check_type'})
+       const{error:recomputeError}=await admin.rpc('sos_recompute_hero_verification_admin',{p_hero_id:sosAccountHero.id});if(recomputeError)console.error('SOS payout verification recompute failed',recomputeError)
+       return Response.json({received:true,duplicate,brand:'SOS',account_api:'v2',payout_ready:ready,transfer_status:transfers,requirements_due:requirements.length})
+     }catch(error){console.error('SOS v2 account reconciliation failed',error);return new Response('SOS payout account reconciliation retry required',{status:503})}
+   }
+ }
  const membershipFlow=object?.metadata?.brand==='SOS'&&object?.metadata?.flow==='membership'
  if(membershipFlow&&(event.type==='checkout.session.completed'||event.type==='customer.subscription.created'||event.type==='customer.subscription.updated'||event.type==='customer.subscription.deleted')){
   try{
