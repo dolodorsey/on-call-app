@@ -1,6 +1,6 @@
 import { useEffect } from 'react'
-import { supabase } from './supabase'
 
+const COVERAGE_URL='https://cxdqkjvtpilvouwtbgdy.supabase.co/functions/v1/marketplace-public-coverage'
 const normalize=(value:unknown)=>String(value||'').replace(/\s+/g,' ').trim()
 
 export default function MarketplaceTruthHost(){
@@ -25,8 +25,9 @@ export default function MarketplaceTruthHost(){
     ;(async()=>{
       let hasVerifiedSupply=false
       try{
-        const {data,error}=await supabase.rpc('oc_public_service_coverage')
-        if(!error&&Array.isArray(data))hasVerifiedSupply=data.some((row:any)=>Boolean(row?.has_verified_supply))
+        const response=await fetch(COVERAGE_URL,{headers:{Accept:'application/json'}})
+        const data=await response.json().catch(()=>null)
+        if(response.ok)hasVerifiedSupply=Boolean(data?.on_call?.has_verified_supply)
       }catch{}
       applyTruth(hasVerifiedSupply)
       observer=new MutationObserver(()=>applyTruth(hasVerifiedSupply))
