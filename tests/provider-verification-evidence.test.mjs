@@ -21,7 +21,11 @@ test('evidence submission can only mark a check submitted, never passed',()=>{
  const migration=read('supabase/migrations/20260809062500_private_verification_documents.sql')
  assert.match(migration,/oc_provider_submit_verification_evidence/)
  assert.match(migration,/status=case when status='passed' then status else 'submitted' end/)
- assert.match(migration,/on_call\/.*auth\.uid\(\).*application_id/i)
+ assert.match(migration,/v_prefix:='on_call\/'/)
+ assert.match(migration,/auth\.uid\(\)::text/)
+ assert.match(migration,/v_app_id::text/)
+ assert.match(migration,/p_check_type/)
+ assert.match(migration,/p_path not like v_prefix/)
 })
 
 test('provider UI uploads private evidence and operations views it through short-lived signed URLs',()=>{
