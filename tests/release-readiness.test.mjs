@@ -179,3 +179,21 @@ test('active client lifecycle has no n8n dependency', () => {
   const source = activeClientFiles.map(read).join('\n')
   assert.doesNotMatch(source, /n8n/i)
 })
+
+test('production provider verification and dispatch truth are reproducible from source', () => {
+  const ledger = read('supabase/migrations/20260809054048_on_call_provider_verification_ledger.sql')
+  const bridge = read('supabase/migrations/20260809054134_on_call_verification_dispatch_bridge.sql')
+  const snapshot = read('supabase/migrations/20260809054202_on_call_truthful_provider_command_snapshot.sql')
+  const indexes = read('supabase/migrations/20260809060000_add_on_call_marketplace_fk_indexes.sql')
+
+  assert.match(ledger, /oc_provider_verification_checks/)
+  assert.match(ledger, /oc_application_service_matches/)
+  assert.match(bridge, /oc_provider_core_dispatch_ready/)
+  assert.match(bridge, /oc_provider_service_dispatch_ready/)
+  assert.match(bridge, /oc_ops_review_provider_verification/)
+  assert.match(snapshot, /verification_required_checks/)
+  assert.match(snapshot, /dispatch_ready_services/)
+  assert.match(indexes, /marketplace_push_deliveries_subscription_id_idx/)
+  assert.match(indexes, /oc_booking_shares_customer_id_idx/)
+  assert.match(indexes, /oc_provider_applications_reviewed_by_idx/)
+})
