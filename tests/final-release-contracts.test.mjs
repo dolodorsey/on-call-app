@@ -4,13 +4,14 @@ import test from 'node:test'
 
 const read = path => fs.readFileSync(new URL(`../${path}`, import.meta.url), 'utf8')
 
-test('ON CALL customer account recovery is mounted and can complete a real password reset', () => {
-  const main=read('src/main.tsx'), recovery=read('src/CustomerRecoveryHost.tsx')
-  assert.match(main,/CustomerRecoveryHost/)
+test('ON CALL account recovery is mounted across customer and provider auth surfaces', () => {
+  const main=read('src/main.tsx'), recovery=read('src/AccountRecoveryHost.tsx')
+  assert.match(main,/AccountRecoveryHost/)
   assert.match(recovery,/resetPasswordForEmail/)
-  assert.match(recovery,/updateUser\(\{ password \}\)/)
+  assert.match(recovery,/auth\.updateUser\(\{password\}\)/)
   assert.match(recovery,/PASSWORD_RECOVERY/)
-  assert.match(recovery,/https:\/\/oncallallday\.com\/\?recovery=1/)
+  assert.match(recovery,/redirectTo:'https:\/\/oncallallday\.com\/\?recovery=1'/)
+  assert.match(recovery,/\.oc2-auth-panel,\.ocp-auth-card,\.ocpa-card/)
 })
 
 test('shared webhook reconciles ON CALL Accounts v2 instead of ignoring them', () => {
