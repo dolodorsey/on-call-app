@@ -22,6 +22,7 @@ import CustomerSettlementReviewHost from './CustomerSettlementReviewHost'
 import CustomerProfileToolsHost from './CustomerProfileToolsHost'
 import CustomerRealtimeBridge from './CustomerRealtimeBridge'
 import AccountRecoveryHost from './AccountRecoveryHost'
+import AccountDeletionHost from './AccountDeletionHost'
 import PushRegistrationHost from './PushRegistrationHost'
 import PaymentReadinessHost from './PaymentReadinessHost'
 import BookingChatHost from './BookingChatHost'
@@ -75,6 +76,7 @@ ReactDOM.createRoot(rootElement).render(
           <BookingChatHost/>
           <PushRegistrationHost/>
           <AccountRecoveryHost/>
+          <AccountDeletionHost/>
           {isProviderActivation ? (
             <ProviderAccountActivation/>
           ) : isProviderApplication || isProviderWorkspace ? (
