@@ -8,6 +8,7 @@ on:
       - 'components/**'
       - 'public/**'
       - 'ios/**'
+      - 'scripts/**'
       - 'package.json'
       - 'package-lock.json'
       - 'capacitor.config.*'
@@ -51,7 +52,7 @@ jobs:
           PROFILE_PATH="$RUNNER_TEMP/on-call-app-store.mobileprovision"
           META_FILE="$RUNNER_TEMP/apple-release-meta.json"
 
-          curl --fail --silent --show-error \
+          curl --fail --silent --show-error --retry 3 --retry-delay 2 --retry-all-errors \
             -H "Authorization: bearer ${ACTIONS_ID_TOKEN_REQUEST_TOKEN}" \
             "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=kollective-apple-release" \
             -o "$TOKEN_FILE"
@@ -64,7 +65,7 @@ jobs:
           )
           [[ -n "$OIDC_TOKEN" ]] || { echo 'GitHub OIDC token was empty'; exit 1; }
 
-          curl --fail --silent --show-error \
+          curl --fail --silent --show-error --retry 3 --retry-delay 2 --retry-all-errors \
             -X POST \
             -H "Authorization: Bearer ${OIDC_TOKEN}" \
             -H 'Content-Type: application/json' \
@@ -167,14 +168,11 @@ jobs:
         run: |
           set -euo pipefail
           ICON_DIR="ios/App/App/Assets.xcassets/AppIcon.appiconset"
-          PNGCRUSH="$(xcrun --find pngcrush)"
+          swift scripts/flatten-ios-icons.swift "$ICON_DIR"
           shopt -s nullglob
           icons=("$ICON_DIR"/*.png)
           [[ ${#icons[@]} -gt 0 ]] || { echo "No iOS app icons found in $ICON_DIR"; exit 1; }
           for icon in "${icons[@]}"; do
-            tmp="${icon%.png}.opaque.png"
-            "$PNGCRUSH" -q -c 2 "$icon" "$tmp"
-            mv "$tmp" "$icon"
             alpha="$(sips -g hasAlpha "$icon" 2>/dev/null | awk -F': ' '/hasAlpha/{print $2}')"
             [[ "$alpha" == "no" ]] || { echo "Alpha channel remains in $icon"; exit 1; }
           done
