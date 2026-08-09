@@ -162,6 +162,24 @@ jobs:
           npm run build
           npx cap sync ios
 
+      - name: Enforce opaque App Store icons
+        shell: bash
+        run: |
+          set -euo pipefail
+          ICON_DIR="ios/App/App/Assets.xcassets/AppIcon.appiconset"
+          PNGCRUSH="$(xcrun --find pngcrush)"
+          shopt -s nullglob
+          icons=("$ICON_DIR"/*.png)
+          [[ ${#icons[@]} -gt 0 ]] || { echo "No iOS app icons found in $ICON_DIR"; exit 1; }
+          for icon in "${icons[@]}"; do
+            tmp="${icon%.png}.opaque.png"
+            "$PNGCRUSH" -q -c 2 "$icon" "$tmp"
+            mv "$tmp" "$icon"
+            alpha="$(sips -g hasAlpha "$icon" 2>/dev/null | awk -F': ' '/hasAlpha/{print $2}')"
+            [[ "$alpha" == "no" ]] || { echo "Alpha channel remains in $icon"; exit 1; }
+          done
+          echo "Verified ${#icons[@]} opaque iOS app icons."
+
       - name: Build, sign, and upload to TestFlight
         working-directory: ios/App
         run: bundle exec fastlane ios beta
