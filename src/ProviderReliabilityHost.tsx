@@ -1,0 +1,14 @@
+import { useEffect,useState } from 'react'
+import { supabase } from './supabase'
+
+type Status={needs_review?:boolean;available?:boolean;active_penalties?:Array<{type?:string;reason?:string;status?:string;created_at?:string}>;open_incidents?:Array<{incident_number?:string;type?:string;severity?:string;status?:string;created_at?:string}>}
+export default function ProviderReliabilityHost(){
+ const[state,setState]=useState<Status|null>(null),[open,setOpen]=useState(false)
+ useEffect(()=>{let disposed=false;const load=async()=>{const{data,error}=await supabase.rpc('oc_provider_reliability_status');if(!disposed&&!error)setState(data as Status)};load().catch(()=>{});const t=window.setInterval(()=>load().catch(()=>{}),30000);return()=>{disposed=true;clearInterval(t)}},[])
+ if(!state?.needs_review)return null
+ const count=(state.active_penalties?.length||0)+(state.open_incidents?.length||0)
+ return <div style={{position:'fixed',right:16,bottom:84,zIndex:1290,width:open?'min(390px,calc(100vw - 32px))':'auto'}}>
+  {!open?<button type="button" onClick={()=>setOpen(true)} style={{border:'1px solid rgba(255,183,71,.35)',borderRadius:999,padding:'10px 13px',background:'#34230a',color:'#ffdca5',fontSize:10,fontWeight:900,boxShadow:'0 12px 36px rgba(0,0,0,.28)'}}>RELIABILITY REVIEW · {count}</button>:
+  <section style={{padding:15,borderRadius:18,background:'rgba(17,24,39,.98)',color:'#fff',border:'1px solid rgba(255,183,71,.25)',boxShadow:'0 20px 60px rgba(0,0,0,.4)'}}><div style={{display:'flex',justifyContent:'space-between',gap:10}}><div><small style={{fontSize:9,letterSpacing:'.12em',fontWeight:900,color:'#ffca78'}}>PROVIDER RELIABILITY</small><strong style={{display:'block',marginTop:4,fontSize:15}}>Your account needs review.</strong></div><button onClick={()=>setOpen(false)} style={{border:0,background:'transparent',color:'#9aa6b7',fontSize:18}}>×</button></div><p style={{fontSize:11,lineHeight:1.45,color:'rgba(255,255,255,.68)'}}>These records come from your own job reliability history. They do not expose internal operations notes or other providers.</p>{(state.active_penalties||[]).map((p,i)=><div key={`p-${i}`} style={{padding:11,borderRadius:12,background:'rgba(255,183,71,.08)',marginTop:8}}><b style={{fontSize:11,textTransform:'capitalize'}}>{(p.type||'reliability review').replaceAll('_',' ')}</b><span style={{display:'block',fontSize:10,color:'rgba(255,255,255,.65)',marginTop:3}}>{p.reason||'Provider reliability review in progress'} · {p.status}</span></div>)}{(state.open_incidents||[]).map((i,n)=><div key={`i-${n}`} style={{padding:11,borderRadius:12,background:'rgba(255,255,255,.06)',marginTop:8}}><b style={{fontSize:11}}>{i.incident_number||'Open incident'} · {(i.type||'issue').replaceAll('_',' ')}</b><span style={{display:'block',fontSize:10,color:'rgba(255,255,255,.65)',marginTop:3}}>Status: {i.status||'open'} · Severity: {i.severity||'low'}</span></div>)}</section>}
+ </div>
+}
