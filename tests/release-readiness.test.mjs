@@ -67,13 +67,17 @@ test('customer no-show settlement requires arrival, wait expiry, authorization, 
   assert.match(settlement, /idempotencyKey:`oc-no-show-/)
 })
 
-test('provider dispatch surfaces leased offers rather than a public shared job board', () => {
+test('Provider Command and floating offer card share one leased-offer source of truth', () => {
   const matchHost = read('src/ProviderMatchHost.tsx')
   const provider = read('src/ProviderCommand.tsx')
+  const migration = read('supabase/migrations/20260809030500_provider_leased_offer_single_source.sql')
   assert.match(matchHost, /oc_provider_active_offers/)
   assert.match(matchHost, /EXCLUSIVE OFFER WINDOW/)
   assert.match(provider, /oc_provider_opportunities/)
   assert.match(provider, /acceptOffer/)
+  assert.match(migration, /from public\.oc_provider_active_offers\(\) a/)
+  assert.match(migration, /from public\.oc_booking_offers o[\s\S]*?o\.expires_at>now\(\)/)
+  assert.doesNotMatch(migration, /oc_provider_opportunities_v2/)
 })
 
 test('desktop layout cannot regress to a universal 460px root shell', () => {
