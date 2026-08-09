@@ -5,7 +5,7 @@ import test from 'node:test'
 const read = path => fs.readFileSync(new URL(`../${path}`, import.meta.url), 'utf8')
 
 const activeClientFiles = [
-  'src/main.tsx','src/supabase.ts','src/marketplace-client.ts','src/OnCallEntry.tsx','src/OnCallMarketplace.tsx','src/ProviderCommand.tsx','src/ProviderMatchHost.tsx','src/ProviderNoShowHost.tsx','src/CustomerProfileToolsHost.tsx',
+  'src/main.tsx','src/supabase.ts','src/marketplace-client.ts','src/OnCallEntry.tsx','src/OnCallMarketplace.tsx','src/ProviderCommand.tsx','src/ProviderMatchHost.tsx','src/ProviderNoShowHost.tsx','src/CustomerProfileToolsHost.tsx','src/CustomerRealtimeBridge.tsx','src/OperationsCommand.tsx',
 ]
 
 test('ON CALL is pinned to the approved shared backend while keeping the oc namespace', () => {
@@ -37,13 +37,15 @@ test('provider service completion is payment-gated and idempotent', () => {
 })
 
 test('customer payment authorization requires both Stripe client and server readiness', () => {
-  const client = read('src/supabase.ts'), host = read('src/PaymentReadinessHost.tsx')
+  const client = read('src/supabase.ts'), host = read('src/PaymentReadinessHost.tsx'), shared=read('supabase/functions/_shared/oc-payments.ts')
   assert.match(client, /VITE_STRIPE_PUBLISHABLE_KEY/)
   assert.match(client, /stripeClientPublishableKeyConfigured/)
   assert.match(client, /if \(!stripeClientPublishableKeyConfigured\) throw new Error\('ON CALL secure payment client is not configured/)
   assert.match(client, /await assertMarketplacePaymentsReady\(\)/)
   assert.match(host, /health\?\.ready&&stripeClientPublishableKeyConfigured/)
   assert.match(host, /NO CHARGE ATTEMPTED/)
+  assert.match(shared,/sos_get_runtime_secret/)
+  assert.match(shared,/STRIPE_SECRET_KEY/)
 })
 
 test('customer cancellation uses quote then atomic settlement instead of a direct booking mutation', () => {
@@ -77,6 +79,30 @@ test('Provider Command and floating offer card share one leased-offer source of 
   assert.doesNotMatch(migration, /oc_provider_opportunities_v2/)
 })
 
+test('customer booking, payment, and assigned provider GPS are realtime-first', () => {
+  const main=read('src/main.tsx'),bridge=read('src/CustomerRealtimeBridge.tsx')
+  assert.match(main,/CustomerRealtimeBridge/)
+  assert.match(bridge,/realtime\.setAuth\(session\.access_token\)/)
+  assert.match(bridge,/onAuthStateChange/)
+  for(const table of ['oc_bookings','oc_booking_payments','oc_provider_locations']) assert.match(bridge,new RegExp(`table:'${table}'`))
+  assert.match(bridge,/PROVIDER LIVE/)
+  assert.match(bridge,/oc2-tracker-map iframe/)
+  assert.match(bridge,/POLLING FALLBACK/)
+})
+
+test('provider applications have an operator-only review and approval surface',()=>{
+  const main=read('src/main.tsx'),ops=read('src/OperationsCommand.tsx'),migration=read('supabase/migrations/20260809041000_add_on_call_operations_provider_review.sql')
+  assert.match(main,/pathname === '\/ops'/)
+  assert.match(main,/OperationsCommand/)
+  assert.match(ops,/oc_ops_provider_applications/)
+  assert.match(ops,/oc_ops_review_provider_application/)
+  assert.match(ops,/Approve provider/)
+  assert.match(migration,/private\.marketplace_operators/)
+  assert.match(migration,/private\.is_marketplace_operator\(auth\.uid\(\)\)/)
+  assert.match(migration,/same email|same-email|Open Provider Command with this same email/i)
+  assert.match(migration,/revoke execute on function public\.oc_ops_review_provider_application/)
+})
+
 test('visible ON CALL customer profile controls are backed by real tools', () => {
   const main=read('src/main.tsx'), tools=read('src/CustomerProfileToolsHost.tsx'), paymentEdge=read('supabase/functions/oc-payment-methods/index.ts'), migration=read('supabase/migrations/20260809035000_finish_on_call_customer_profile_tools.sql')
   assert.match(main,/CustomerProfileToolsHost/)
@@ -101,8 +127,8 @@ test('desktop layout cannot regress to a universal 460px root shell', () => {
   assert.doesNotMatch(premium, /\.oc-experience\s*>\s*\*\s*\{[^}]*max-width\s*:\s*460px/s)
   assert.match(rescue, /\.oc-experience\s*>\s*\.oc2-app[\s\S]*?max-width:\s*none\s*!important/)
   assert.match(rescue, /\.oc-experience\s*>\s*\.ocp-app[\s\S]*?max-width:\s*none\s*!important/)
-  const rescueImport = main.indexOf("import './root-layout-rescue.css'"), marketplaceImport = main.indexOf("import './on-call-marketplace.css'"), toolsImport=main.indexOf("import './customer-profile-tools.css'")
-  assert.ok(rescueImport > marketplaceImport && rescueImport > toolsImport, 'root layout rescue must be the last app stylesheet')
+  const rescueImport = main.indexOf("import './root-layout-rescue.css'"), marketplaceImport = main.indexOf("import './on-call-marketplace.css'"), toolsImport=main.indexOf("import './customer-profile-tools.css'"),opsImport=main.indexOf("import './operations-command.css'")
+  assert.ok(rescueImport > marketplaceImport && rescueImport > toolsImport && rescueImport > opsImport, 'root layout rescue must be the last app stylesheet')
 })
 
 test('desktop marketplace and Provider Command cannot regress to micro-sized phone typography', () => {
