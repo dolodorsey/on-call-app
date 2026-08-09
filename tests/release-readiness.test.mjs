@@ -44,6 +44,17 @@ test('provider service completion is payment-gated and idempotent', () => {
   assert.match(completion, /Capture retry required/)
 })
 
+test('customer payment authorization requires both Stripe client and server readiness', () => {
+  const client = read('src/supabase.ts')
+  const host = read('src/PaymentReadinessHost.tsx')
+  assert.match(client, /VITE_STRIPE_PUBLISHABLE_KEY/)
+  assert.match(client, /stripeClientPublishableKeyConfigured/)
+  assert.match(client, /if \(!stripeClientPublishableKeyConfigured\) throw new Error\('ON CALL secure payment client is not configured/)
+  assert.match(client, /await assertMarketplacePaymentsReady\(\)/)
+  assert.match(host, /health\?\.ready&&stripeClientPublishableKeyConfigured/)
+  assert.match(host, /NO CHARGE ATTEMPTED/)
+})
+
 test('customer cancellation uses quote then atomic settlement instead of a direct booking mutation', () => {
   const client = read('src/supabase.ts')
   const marketplace = read('src/marketplace-client.ts')
