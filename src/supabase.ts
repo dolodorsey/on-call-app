@@ -88,15 +88,43 @@ export const getOcUserId = async (authId: string): Promise<string | null> => {
   return data?.id || null;
 };
 
+const legacyResolveMarket = (address: string) => {
+  const normalized = String(address || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+  const markets = [
+    ['Atlanta','GA',['atlanta','atl']],['Charlotte','NC',['charlotte']],['Dallas','TX',['dallas']],['Houston','TX',['houston']],
+    ['Las Vegas','NV',['las vegas','vegas']],['Los Angeles','CA',['los angeles']],['Miami','FL',['miami']],['New York','NY',['new york','nyc']],
+    ['Phoenix','AZ',['phoenix']],['Washington','DC',['washington dc','washington','district of columbia']],
+  ] as const;
+  return markets.find(([,state,aliases]) => aliases.some(alias => normalized.includes(alias)) && new RegExp(`(^|\\s)${state.toLowerCase()}(\\s|$)`).test(normalized)) || null;
+};
+
+// Compatibility helper for older call sites. It must still use the same controlled
+// catalog/market RPC as the current marketplace client; it never trusts client price.
 export const createBooking = async (booking: {
   customer_id: string; service_id?: string; service_name: string; category_name: string; address: string;
   lat?: number; lng?: number; total_price: number; scheduled_at?: string;
 }) => {
   const ocUserId = await getOcUserId(booking.customer_id);
   if (!ocUserId) throw new Error('No ON CALL customer profile found for this account');
-  const { data, error } = await supabase.rpc('oc_request_service', {
-    p_service_name: booking.service_name, p_address: booking.address, p_lat: booking.lat || null,
-    p_lng: booking.lng || null, p_scheduled_at: booking.scheduled_at || null,
+  let serviceId = booking.service_id || '';
+  if (!serviceId) {
+    const { data: service, error: serviceError } = await supabase.from('oc_service_catalog').select('id').eq('name', booking.service_name).eq('is_active', true).limit(1).maybeSingle();
+    if (serviceError) throw serviceError;
+    serviceId = service?.id || '';
+  }
+  if (!serviceId) throw new Error('Selected ON CALL service is not in the active catalog.');
+  const market = legacyResolveMarket(booking.address);
+  if (!market) throw new Error('Enter a full service address including a supported ON CALL city and state.');
+  const { data, error } = await supabase.rpc('oc_request_market_service', {
+    p_service_id: serviceId,
+    p_address: booking.address,
+    p_market_city: market[0],
+    p_market_state: market[1],
+    p_lat: booking.lat ?? null,
+    p_lng: booking.lng ?? null,
+    p_scheduled_at: booking.scheduled_at ?? null,
+    p_recurring_rule: null,
+    p_notes: null,
   });
   if (error) throw error;
   return data;
