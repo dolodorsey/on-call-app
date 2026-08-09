@@ -6,7 +6,7 @@ APP_IDENTIFIER = "com.khg.oncallapp"
 platform :ios do
   desc "Build and upload ON CALL to TestFlight without manual Xcode upload"
   lane :beta do
-    %w[ASC_KEY_ID ASC_ISSUER_ID].each do |name|
+    %w[ASC_KEY_ID ASC_ISSUER_ID IOS_PROFILE_NAME].each do |name|
       UI.user_error!("Missing required #{name}") if ENV[name].to_s.strip.empty?
     end
     key_path = ENV["ASC_KEY_PATH"].to_s.strip
@@ -31,26 +31,33 @@ platform :ios do
     build_number = Time.now.utc.strftime("%Y%m%d%H%M") if build_number.empty?
     increment_build_number(build_number: build_number, xcodeproj: "App.xcodeproj")
 
-    signing_args = ["DEVELOPMENT_TEAM=#{TEAM_ID}", "-allowProvisioningUpdates"]
-    unless key_path.empty?
-      signing_args += [
-        "-authenticationKeyPath '#{key_path}'",
-        "-authenticationKeyID '#{ENV["ASC_KEY_ID"]}'",
-        "-authenticationKeyIssuerID '#{ENV["ASC_ISSUER_ID"]}'"
-      ]
-    end
+    profile_name = ENV["IOS_PROFILE_NAME"].to_s.strip
+    signing_args = [
+      "DEVELOPMENT_TEAM=#{TEAM_ID}",
+      "CODE_SIGN_STYLE=Manual",
+      "CODE_SIGN_IDENTITY='iPhone Distribution'",
+      "PROVISIONING_PROFILE_SPECIFIER='#{profile_name}'"
+    ]
 
     build_app(
       project: "App.xcodeproj",
       scheme: "App",
       export_method: "app-store",
       export_team_id: TEAM_ID,
-      export_options: "../ExportOptions.plist",
+      export_options: {
+        method: "app-store-connect",
+        signingStyle: "manual",
+        signingCertificate: "iPhone Distribution",
+        teamID: TEAM_ID,
+        provisioningProfiles: { APP_IDENTIFIER => profile_name },
+        uploadSymbols: true
+      },
       clean: true,
       output_directory: "./build",
       output_name: "on-call.ipa",
       xcargs: signing_args.join(" "),
       disable_package_automatic_updates: true,
+      skip_profile_detection: true,
       result_bundle: true
     )
 
