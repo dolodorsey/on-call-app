@@ -32,13 +32,23 @@ test('Provider Command exposes approved-account activation and the route is moun
  assert.match(access,/href="\/provider\/activate"/)
 })
 
-test('customer create-account submit is intercepted and confirmation-aware while sign-in is untouched',()=>{
- const guard=read('src/CustomerAuthConfirmationGuard.tsx')
- assert.match(guard,/\.oc2-auth-panel/)
- assert.match(guard,/create account/i)
- assert.match(guard,/event\.preventDefault\(\)/)
- assert.match(guard,/auth\.signUp/)
- assert.match(guard,/if\(data\.session\)/)
- assert.match(guard,/auth\.resend/)
- assert.match(guard,/I confirmed — sign in/)
+test('customer create-account stops for required email confirmation instead of forcing password sign-in',()=>{
+ const entry=read('src/OnCallEntry.tsx')
+ assert.match(entry,/auth\.signUp/)
+ assert.match(entry,/emailRedirectTo:'https:\/\/oncallallday\.com\/auth\/confirm'/)
+ assert.match(entry,/if\(data\.session\)\{setSession\(data\.session\);return\}/)
+ assert.match(entry,/Check your email to confirm your address, then sign in/)
+})
+
+test('/auth/confirm is a dedicated callback that accepts PKCE, token-hash, and implicit session flows',()=>{
+ const main=read('src/main.tsx')
+ const callback=read('src/AuthConfirmationRoute.tsx')
+ assert.match(main,/const isAuthConfirm = pathname === '\/auth\/confirm'/)
+ assert.match(main,/isAuthConfirm \? <AuthConfirmationRoute\/>/)
+ assert.match(callback,/exchangeCodeForSession\(code\)/)
+ assert.match(callback,/verifyOtp\(\{token_hash:tokenHash,type:type as any\}\)/)
+ assert.match(callback,/auth\.getSession\(\)/)
+ assert.match(callback,/onAuthStateChange/)
+ assert.match(callback,/Email confirmed\. Your ON CALL account is ready\./)
+ assert.match(callback,/location\.replace\('\/'\)/)
 })
