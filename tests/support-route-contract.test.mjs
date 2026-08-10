@@ -17,10 +17,12 @@ test('/support renders the dedicated authenticated ON CALL support center', () =
   assert.match(support, /oc_open_support_ticket/)
 })
 
-test('support center uses central auth and real booking choices instead of raw booking IDs', () => {
-  assert.match(support, /import \{getBookings,signIn,supabase\}/)
-  assert.match(support, /getBookings\(nextSession\.user\.id\)/)
-  assert.match(support, /Related booking/)
+test('support center uses central auth and role-aware support booking choices', () => {
+  assert.match(support, /import \{signIn,supabase\}/)
+  assert.match(support, /oc_my_supportable_bookings/)
+  assert.match(support, /Related booking or assigned job/)
+  assert.match(support, /Provider job/)
+  assert.match(support, /Customer booking/)
   assert.match(support, /No booking \/ general account issue/)
   assert.match(support, /\/auth\/reset/)
   assert.doesNotMatch(support, /placeholder="Only if this case is about a booking"/)
