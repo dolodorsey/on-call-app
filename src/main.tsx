@@ -61,6 +61,7 @@ const isProviderWorkspace = pathname === '/provider'
 const isOperationsWorkspace = pathname === '/ops'
 const isPrivacy = pathname === '/privacy'
 const isTerms = pathname === '/terms'
+const isSupport = pathname === '/support'
 
 class RuntimeBoundary extends React.Component<React.PropsWithChildren, { hasError: boolean }> {
   state = { hasError: false }
@@ -84,7 +85,7 @@ ReactDOM.createRoot(rootElement).render(
   <React.StrictMode>
     <RuntimeBoundary>
       <div className="oc-experience" data-app="on-call">
-        {isPrivacy ? <LegalPage kind="privacy"/> : isTerms ? <LegalPage kind="terms"/> : <>
+        {isPrivacy ? <LegalPage kind="privacy"/> : isTerms ? <LegalPage kind="terms"/> : isSupport ? <LegalPage kind="support"/> : <>
           <InteractionContractHost/>
           <MarketplaceTruthHost/>
           <LegalLinksHost/>
