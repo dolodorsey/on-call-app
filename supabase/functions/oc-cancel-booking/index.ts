@@ -26,16 +26,15 @@ Deno.serve(async(req)=>{
   if(feeCents>0&&(!payment?.stripe_payment_intent_id||payment.status!=='authorized'))throw new Error('Late cancellation fee requires an active payment authorization');
   if(payment?.stripe_payment_intent_id&&!stripeKey)throw new Error('STRIPE_SECRET_KEY is not configured');
 
-  // Cancellation wins in Postgres first so the provider cannot advance the job
-  // while an external Stripe request is in flight.
   const {data:canceled,error:cerr}=await admin.rpc('oc_customer_cancel_v2',{p_booking_id:bookingId,p_reason:typeof reason==='string'?reason:null}); if(cerr)throw cerr;
 
-  let settlementPending=false,settlementError='';
+  let settlementPending=false;
   if(payment){
     const patch:any={settlement_type:'customer_cancellation',cancellation_fee_cents:feeCents,original_platform_fee:payment.original_platform_fee??payment.platform_fee,original_provider_amount:payment.original_provider_amount??payment.provider_amount,platform_fee:platformCents,provider_amount:providerCents,updated_at:new Date().toISOString()};
     if(feeCents>0)patch.status='capture_pending';
-    const {error:prepError}=await admin.from('oc_booking_payments').update(patch).eq('id',payment.id);if(prepError)throw prepError;
-    if(payment.stripe_payment_intent_id){
+    const {error:prepError}=await admin.from('oc_booking_payments').update(patch).eq('id',payment.id);
+    if(prepError){settlementPending=true;console.error('ON CALL cancellation settlement preparation queued for retry',{bookingId,paymentId:payment.id,error:prepError.message})}
+    if(!prepError&&payment.stripe_payment_intent_id){
       try{
         const stripe=new Stripe(stripeKey,{httpClient:Stripe.createFetchHttpClient()});
         if(feeCents===0){
@@ -46,7 +45,7 @@ Deno.serve(async(req)=>{
           const chargeId=typeof pi.latest_charge==='string'?pi.latest_charge:pi.latest_charge?.id||payment.stripe_charge_id||null;
           await admin.from('oc_booking_payments').update({status:'transfer_pending',amount_captured:pi.amount_received??feeCents,stripe_charge_id:chargeId,captured_at:new Date().toISOString(),updated_at:new Date().toISOString()}).eq('id',payment.id);
         }
-      }catch(error){settlementPending=true;settlementError=error instanceof Error?error.message:String(error);console.error('ON CALL cancellation settlement queued for retry',{bookingId,paymentId:payment.id,error:settlementError})}
+      }catch(error){settlementPending=true;console.error('ON CALL cancellation settlement queued for retry',{bookingId,paymentId:payment.id,error:String(error)})}
     }
   }
   return json({...responseQuote,ok:true,booking:canceled,paymentSettlement:settlementPending?'pending_retry':'settled',settlementError:settlementPending?'Payment settlement will retry automatically.':undefined},settlementPending?202:200);
