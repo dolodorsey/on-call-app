@@ -1,0 +1,1 @@
+Current release work must be verified against the latest `main` commit, not an earlier passing deployment or TestFlight build.
