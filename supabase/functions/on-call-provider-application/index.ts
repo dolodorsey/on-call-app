@@ -14,7 +14,7 @@ Deno.serve(async req=>{
  const declared=Number(req.headers.get('content-length')||0);if(Number.isFinite(declared)&&declared>MAX_BODY_BYTES)return reply({error:'Application request is too large.'},413,origin);
  try{
   const raw=await req.text();if(new TextEncoder().encode(raw).byteLength>MAX_BODY_BYTES)return reply({error:'Application request is too large.'},413,origin);
-  const body=JSON.parse(raw||'{}');
+  let body:any;try{body=JSON.parse(raw||'{}')}catch{return reply({error:'Application request must be valid JSON.'},400,origin)}
   const supabase=createClient(Deno.env.get('SUPABASE_URL')!,Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,{auth:{persistSession:false,autoRefreshToken:false}});
   if(body?.action==='status'){
     const applicationNumber=clean(body.application_number,40),trackingToken=clean(body.tracking_token,200);
