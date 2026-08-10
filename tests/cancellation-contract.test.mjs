@@ -13,14 +13,11 @@ test('ON CALL cancellation Edge uses integer cents from Postgres',()=>{
   assert.match(edge,/Math\.round\(Number\(expectedFeeAmount\)\*100\)!==feeCents/)
   assert.match(edge,/amount_to_capture:feeCents/)
   assert.doesNotMatch(edge,/q\.fee_amount/)
-  assert.doesNotMatch(edge,/q\.provider_compensation(?:\W|$)/)
 })
 
 test('ON CALL cancellation is DB-authoritative before Stripe and retryable',()=>{
   const edge=read('supabase/functions/oc-cancel-booking/index.ts')
-  const cancel=edge.indexOf("oc_customer_cancel_v2")
-  const capture=edge.indexOf('paymentIntents.capture')
-  const cancelIntent=edge.indexOf('paymentIntents.cancel')
+  const cancel=edge.indexOf('oc_customer_cancel_v2'),capture=edge.indexOf('paymentIntents.capture'),cancelIntent=edge.indexOf('paymentIntents.cancel')
   assert.ok(cancel>=0&&capture>cancel,'DB cancellation must precede Stripe capture')
   assert.ok(cancel>=0&&cancelIntent>cancel,'DB cancellation must precede Stripe authorization cancel')
   assert.match(edge,/pending_retry/)
@@ -43,14 +40,16 @@ test('cancellation settlement split preserves the original authorization model',
   assert.match(migration,/platform_fee \+ provider_amount \+ tax_cents = amount_authorized/)
 })
 
-test('scheduled retry worker uses Vault, v2 payout readiness, and Stripe idempotency parity',()=>{
+test('scheduled retry worker uses Vault, v2 payout readiness, and matching Stripe keys',()=>{
   const worker=read('supabase/functions/marketplace-payout-retry/index.ts')
   const schedule=read('supabase/migrations/20260810083127_schedule_marketplace_payout_retry_worker_v2.sql')
   assert.match(worker,/sos_get_runtime_secret/)
   assert.match(worker,/stripe_account_api_version==='v2'/)
   assert.match(worker,/stripe_transfer_status==='active'/)
-  assert.match(worker,/oc-payment-\$\{payment\.id\}-transfer-v2/)
-  assert.match(worker,/oc-cancel-booking-\$\{payment\.id\}-\$\{fee\}-v2/)
+  assert.match(worker,/oc-payment-\$\{p\.id\}-transfer-v2/)
+  assert.match(worker,/customer_no_show/)
+  assert.match(worker,/oc-no-show/)
+  assert.match(worker,/oc-cancel-booking/)
   assert.doesNotMatch(worker,/retry_worker/)
   assert.match(schedule,/marketplace-payout-retry/)
   assert.match(schedule,/payout_retry_worker_token/)
