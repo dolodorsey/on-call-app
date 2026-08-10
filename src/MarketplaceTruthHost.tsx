@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
 
 const COVERAGE_URL='https://cxdqkjvtpilvouwtbgdy.supabase.co/functions/v1/marketplace-public-coverage'
+const HEALTH_URL='https://cxdqkjvtpilvouwtbgdy.supabase.co/functions/v1/oncall-health'
 const normalize=(value:unknown)=>String(value||'').replace(/\s+/g,' ').trim()
 const FALLBACK_MARKERS=['marker=33.749%2C-84.388','marker=33.749,-84.388','marker=33.749%2c-84.388']
 
@@ -10,7 +11,7 @@ export default function MarketplaceTruthHost(){
     let observer:MutationObserver|undefined
     let timer:number|undefined
 
-    const applyTruth=(hasVerifiedSupply:boolean)=>{
+    const applyTruth=(hasVerifiedSupply:boolean,activeZones:number|null)=>{
       if(stopped)return
       const replacements:Record<string,string>={
         'LIVE SERVICE TYPES':'CATALOG SERVICE TYPES',
@@ -20,7 +21,27 @@ export default function MarketplaceTruthHost(){
       document.querySelectorAll('span,small').forEach(node=>{
         const text=normalize(node.textContent)
         if(replacements[text])node.textContent=replacements[text]
+        if(text==='Services that can be requested on demand')node.textContent='On-demand service types; verified coverage is confirmed before booking.'
       })
+
+      document.querySelectorAll('h2').forEach(node=>{
+        const text=normalize(node.textContent)
+        if(text==='Popular right now')node.textContent='Popular services'
+        if(!hasVerifiedSupply&&text.startsWith('Book '))node.textContent=text.replace(/^Book /,'Explore ')
+      })
+
+      const mobileCta=document.querySelector<HTMLButtonElement>('.oce-mobile-cta')
+      if(mobileCta)mobileCta.textContent=hasVerifiedSupply?'Choose a covered service':'Browse services'
+
+      if(activeZones!==null&&activeZones>0){
+        for(const stat of document.querySelectorAll<HTMLElement>('.oce-statbar .oce-stat')){
+          const label=normalize(stat.querySelector('span')?.textContent)
+          if(label==='TARGET MARKETS'){
+            const strong=stat.querySelector('strong')
+            if(strong)strong.textContent=String(activeZones)
+          }
+        }
+      }
 
       for(const button of document.querySelectorAll<HTMLButtonElement>('.oc2-popular-grid>button,.oc2-service-list>button')){
         const small=button.querySelector('small')
@@ -63,14 +84,25 @@ export default function MarketplaceTruthHost(){
 
     const refresh=async()=>{
       let hasVerifiedSupply=false
+      let activeZones:number|null=null
       try{
-        const response=await fetch(COVERAGE_URL,{headers:{Accept:'application/json'},cache:'no-store'})
-        const data=await response.json().catch(()=>null)
-        if(response.ok)hasVerifiedSupply=Boolean(data?.on_call?.has_verified_supply)
+        const [coverageResponse,healthResponse]=await Promise.all([
+          fetch(COVERAGE_URL,{headers:{Accept:'application/json'},cache:'no-store'}),
+          fetch(HEALTH_URL,{headers:{Accept:'application/json'},cache:'no-store'}),
+        ])
+        const [coverage,health]=await Promise.all([
+          coverageResponse.json().catch(()=>null),
+          healthResponse.json().catch(()=>null),
+        ])
+        if(coverageResponse.ok)hasVerifiedSupply=Boolean(coverage?.on_call?.has_verified_supply)
+        if(healthResponse.ok){
+          const value=Number(health?.checks?.catalog?.active_zones)
+          if(Number.isFinite(value)&&value>0)activeZones=value
+        }
       }catch{}
-      applyTruth(hasVerifiedSupply)
+      applyTruth(hasVerifiedSupply,activeZones)
       observer?.disconnect()
-      observer=new MutationObserver(()=>applyTruth(hasVerifiedSupply))
+      observer=new MutationObserver(()=>applyTruth(hasVerifiedSupply,activeZones))
       observer.observe(document.body,{childList:true,subtree:true,characterData:true,attributes:true,attributeFilter:['data-verified-coverage','src']})
     }
 
