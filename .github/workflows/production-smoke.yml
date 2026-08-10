@@ -17,12 +17,36 @@ permissions:
 jobs:
   production-smoke:
     runs-on: ubuntu-latest
-    timeout-minutes: 8
+    timeout-minutes: 10
+    env:
+      BASE_URL: https://oncallallday.com
     steps:
+      - name: Wait for exact Vercel production commit
+        shell: bash
+        run: |
+          set -euo pipefail
+          for attempt in $(seq 1 72); do
+            body="$(curl -L --silent --show-error --connect-timeout 8 --max-time 15 "${BASE_URL}/release.json?run=${GITHUB_RUN_ID}-${attempt}" || true)"
+            live_sha="$(python3 -c 'import json,sys
+try:
+ print(json.load(sys.stdin).get("commit", ""))
+except Exception:
+ print("")' <<<"$body")"
+            if [[ "$live_sha" == "$GITHUB_SHA" ]]; then
+              echo "Production is serving expected commit ${GITHUB_SHA}."
+              break
+            fi
+            if [[ "$attempt" -eq 72 ]]; then
+              echo "Production did not reach expected commit ${GITHUB_SHA}; last observed: ${live_sha:-unavailable}"
+              echo "$body"
+              exit 1
+            fi
+            echo "Waiting for Vercel production commit ${GITHUB_SHA}; observed ${live_sha:-unavailable} (attempt ${attempt}/72)"
+            sleep 5
+          done
+
       - name: Verify public production routes
         shell: bash
-        env:
-          BASE_URL: https://oncallallday.com
         run: |
           set -euo pipefail
           routes=(
@@ -53,11 +77,14 @@ jobs:
             rm -f "$out"
           done
 
-      - name: Verify production brand shell and PWA assets
+      - name: Verify production brand and PWA assets
         shell: bash
         run: |
           set -euo pipefail
-          home="$(curl -L --fail --silent --show-error --retry 3 --retry-all-errors --connect-timeout 8 --max-time 25 https://oncallallday.com/)"
+          home="$(curl -L --fail --silent --show-error --retry 3 --retry-all-errors --connect-timeout 8 --max-time 25 "${BASE_URL}/")"
           grep -qi 'ON CALL' <<<"$home" || { echo 'ON CALL production brand shell is missing'; exit 1; }
-          curl -L --fail --silent --show-error --retry 3 --retry-all-errors --connect-timeout 8 --max-time 25 https://oncallallday.com/manifest.json >/dev/null
+          for asset in /manifest.json /marketplace-sw.js /release.json; do
+            curl -L --fail --silent --show-error --retry 3 --retry-all-errors --connect-timeout 8 --max-time 25 "${BASE_URL}${asset}" >/dev/null
+            echo "OK ${asset}"
+          done
           echo 'ON CALL production smoke passed.'
