@@ -25,7 +25,7 @@ test('production provider route cannot fall back to the legacy all-in-one app', 
   assert.doesNotMatch(main, /import App from ['"]\.\/App/)
 })
 
-test('provider service completion is payment-gated and idempotent', () => {
+test('provider service completion is payment-gated, idempotent, and auto-retryable', () => {
   const client = read('src/supabase.ts'), completion = read('supabase/functions/oc-complete-service/index.ts')
   assert.match(client, /assertMarketplacePaymentsReady\(\)/)
   assert.match(client, /oc-complete-service/)
@@ -33,7 +33,10 @@ test('provider service completion is payment-gated and idempotent', () => {
   assert.match(completion, /Customer payment authorization is required before completion/)
   assert.match(completion, /paymentIntents\.capture/)
   assert.match(completion, /idempotencyKey:`oc-payment-\$\{payment\.id\}-capture-v2`/)
-  assert.match(completion, /Capture retry required/)
+  assert.match(completion, /Automatic capture retry queued/)
+  assert.match(completion, /pending_retry/)
+  assert.match(completion, /payment capture will retry automatically/i)
+  assert.doesNotMatch(completion, /Reopen this completed job/)
 })
 
 test('customer payment authorization has a secure hosted fallback when Stripe.js is not configured', () => {
