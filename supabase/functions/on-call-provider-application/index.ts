@@ -7,11 +7,14 @@ const reply=(body:unknown,status:number,origin:string|null)=>new Response(JSON.s
 const clean=(value:unknown,max:number)=>typeof value==='string'?value.trim().slice(0,max):'';
 const sha256=async(value:string)=>Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(value)))).map(b=>b.toString(16).padStart(2,'0')).join('');
 const token=()=>{const bytes=crypto.getRandomValues(new Uint8Array(32));return btoa(String.fromCharCode(...bytes)).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'')};
+const MAX_BODY_BYTES=32768;
 
 Deno.serve(async req=>{
  const origin=req.headers.get('origin');if(req.method==='OPTIONS')return new Response('ok',{headers:headersFor(origin)});if(req.method!=='POST')return reply({error:'Method not allowed'},405,origin);if(origin&&!allowedOrigins.has(origin))return reply({error:'Origin not allowed'},403,origin);
+ const declared=Number(req.headers.get('content-length')||0);if(Number.isFinite(declared)&&declared>MAX_BODY_BYTES)return reply({error:'Application request is too large.'},413,origin);
  try{
-  const body=await req.json();
+  const raw=await req.text();if(new TextEncoder().encode(raw).byteLength>MAX_BODY_BYTES)return reply({error:'Application request is too large.'},413,origin);
+  const body=JSON.parse(raw||'{}');
   const supabase=createClient(Deno.env.get('SUPABASE_URL')!,Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,{auth:{persistSession:false,autoRefreshToken:false}});
   if(body?.action==='status'){
     const applicationNumber=clean(body.application_number,40),trackingToken=clean(body.tracking_token,200);
@@ -26,7 +29,8 @@ Deno.serve(async req=>{
   const attest=body.background_check_consent===true&&body.license_attested===true&&body.insurance_attested===true&&body.terms_accepted===true;
   if(firstName.length<2||lastName.length<2||!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)||phone.length<7||city.length<2||!/^[A-Z]{2}$/.test(stateCode)||selected.length===0||!Number.isFinite(years)||years<0||years>80||!attest)return reply({error:'Please complete every required application field and eligibility attestation.'},400,origin);
   const{data:recent}=await supabase.from('oc_provider_applications').select('id,application_number,status,status_token_hash').eq('email',email).in('status',['submitted','reviewing','approved']).order('created_at',{ascending:false}).limit(1);if(recent?.length)return reply({success:true,duplicate:true,application_number:recent[0].application_number,status:recent[0].status,message:'An active application already exists for this email. Use the private receipt saved on the original device to track it.'},200,origin);
-  const ip=(req.headers.get('x-forwarded-for')||'unknown').split(',')[0].trim();const digest=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(ip));const ipHash=Array.from(new Uint8Array(digest)).map(b=>b.toString(16).padStart(2,'0')).join('');
+  const source=(req.headers.get('x-forwarded-for')||req.headers.get('x-real-ip')||req.headers.get('cf-connecting-ip')||'unknown').split(',')[0].trim();const ipHash=await sha256(source);
+  const{data:limit,error:limitError}=await supabase.rpc('marketplace_consume_intake_rate_limit',{p_app:'on_call_provider',p_ip_hash:ipHash,p_limit:8,p_window_minutes:60});if(limitError)throw limitError;if(limit?.allowed!==true)return reply({error:'Too many new applications from this network. Try again later.',retry_after_minutes:60},429,origin);
   const trackingToken=token(),statusTokenHash=await sha256(trackingToken);
   const{data,error}=await supabase.from('oc_provider_applications').insert({first_name:firstName,last_name:lastName,email,phone,city,state_code:stateCode,zip_code:clean(body.zip_code,12)||null,services_requested:selected,years_experience:years,experience_description:clean(body.experience_description,2000)||null,has_vehicle:Boolean(body.has_vehicle),vehicle_type:clean(body.vehicle_type,80)||null,background_check_consent:true,license_attested:true,insurance_attested:true,terms_accepted:true,certifications:clean(body.certifications,2000)||null,license_details:clean(body.license_details,2000)||null,insurance_details:clean(body.insurance_details,2000)||null,source_ip_hash:ipHash,status_token_hash:statusTokenHash}).select('id,application_number,status').single();if(error)throw error;
   return reply({success:true,application_number:data.application_number,status:data.status,tracking_token:trackingToken,message:'Application received. Save this device/browser to track review status. Approval does not bypass service-specific verification or payout readiness.'},201,origin);
