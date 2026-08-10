@@ -16,7 +16,17 @@ export default function AccountRecoveryHost(){
 
  useEffect(()=>{
    let active=true
-   const check=()=>{if(!active)return;const path=window.location.pathname;const loginSurface=Boolean(document.querySelector('.oc2-auth-panel,.ocp-auth-card,.ocpa-card'));setVisible(loginSurface&&['/','/provider','/provider/activate'].includes(path.replace(/\/$/,'')||'/'))}
+   const initialPath=window.location.pathname.replace(/\/$/,'')||'/'
+   if(initialPath==='/auth/reset'){
+     setMode('request');setOpen(true);setVisible(false);setError('');setNotice('Enter the email on your ON CALL account to receive a secure password-reset link.')
+   }
+   const check=()=>{
+     if(!active)return
+     const path=window.location.pathname.replace(/\/$/,'')||'/'
+     if(path==='/auth/reset'){setVisible(false);return}
+     const loginSurface=Boolean(document.querySelector('.oc2-auth-panel,.ocp-auth-card,.ocpa-card'))
+     setVisible(loginSurface&&['/','/provider','/provider/activate'].includes(path))
+   }
    check();const observer=new MutationObserver(check);observer.observe(document.body,{subtree:true,childList:true})
    const{data}=supabase.auth.onAuthStateChange((event)=>{
      if(event==='PASSWORD_RECOVERY'){setMode('update');setOpen(true);setVisible(false);setError('');setNotice('Choose a new password for this ON CALL account.')}
@@ -48,5 +58,10 @@ export default function AccountRecoveryHost(){
    finally{setBusy(false)}
  }
 
- return <>{visible&&!open&&<button className="ocar-launch" onClick={()=>{setMode('request');setOpen(true);setError('');setNotice('')}}>Forgot password?</button>}{open&&<div className="ocar-backdrop"><section className="ocar-card" role="dialog" aria-modal="true"><button className="ocar-close" onClick={()=>setOpen(false)}>×</button><div className="ocar-mark">OC</div><span>{mode==='request'?'ACCOUNT RECOVERY':'SET NEW PASSWORD'}</span><h2>{mode==='request'?'Recover ON CALL.':'Choose a new password.'}</h2><p>{mode==='request'?'We’ll send a secure recovery link to the email on your account.':'This recovery session came from your password-reset email.'}</p>{mode==='request'?<form onSubmit={request}><label>Email<input required type="email" value={email} onChange={e=>setEmail(e.target.value)} autoComplete="email"/></label>{error&&<div className="ocar-error">{error}</div>}{notice&&<div className="ocar-notice">{notice}</div>}<button className="ocar-primary" disabled={busy}>{busy?'Sending…':'Send reset link'}</button></form>:<form onSubmit={update}><label>New password<input required minLength={8} type="password" value={password} onChange={e=>setPassword(e.target.value)} autoComplete="new-password"/></label><label>Confirm password<input required minLength={8} type="password" value={confirm} onChange={e=>setConfirm(e.target.value)} autoComplete="new-password"/></label>{error&&<div className="ocar-error">{error}</div>}{notice&&<div className="ocar-notice">{notice}</div>}<button className="ocar-primary" disabled={busy}>{busy?'Updating…':'Update password'}</button></form>}<small>Recovery never changes provider approval, verification, bookings, or payout state.</small></section></div>}</>
+ const close=()=>{
+   setOpen(false)
+   if((window.location.pathname.replace(/\/$/,'')||'/')==='/auth/reset')window.location.assign('/')
+ }
+
+ return <>{visible&&!open&&<button className="ocar-launch" onClick={()=>{setMode('request');setOpen(true);setError('');setNotice('')}}>Forgot password?</button>}{open&&<div className="ocar-backdrop"><section className="ocar-card" role="dialog" aria-modal="true"><button className="ocar-close" onClick={close}>×</button><div className="ocar-mark">OC</div><span>{mode==='request'?'ACCOUNT RECOVERY':'SET NEW PASSWORD'}</span><h2>{mode==='request'?'Recover ON CALL.':'Choose a new password.'}</h2><p>{mode==='request'?'We’ll send a secure recovery link to the email on your account.':'This recovery session came from your password-reset email.'}</p>{mode==='request'?<form onSubmit={request}><label>Email<input required type="email" value={email} onChange={e=>setEmail(e.target.value)} autoComplete="email"/></label>{error&&<div className="ocar-error">{error}</div>}{notice&&<div className="ocar-notice">{notice}</div>}<button className="ocar-primary" disabled={busy}>{busy?'Sending…':'Send reset link'}</button></form>:<form onSubmit={update}><label>New password<input required minLength={8} type="password" value={password} onChange={e=>setPassword(e.target.value)} autoComplete="new-password"/></label><label>Confirm password<input required minLength={8} type="password" value={confirm} onChange={e=>setConfirm(e.target.value)} autoComplete="new-password"/></label>{error&&<div className="ocar-error">{error}</div>}{notice&&<div className="ocar-notice">{notice}</div>}<button className="ocar-primary" disabled={busy}>{busy?'Updating…':'Update password'}</button></form>}<small>Recovery never changes provider approval, verification, bookings, or payout state.</small></section></div>}</>
 }
