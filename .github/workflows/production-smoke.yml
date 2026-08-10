@@ -22,10 +22,41 @@ jobs:
       BASE_URL: https://oncallallday.com
       BACKEND_HEALTH_URL: https://cxdqkjvtpilvouwtbgdy.supabase.co/functions/v1/oncall-health
     steps:
-      - name: Wait for exact Vercel production commit
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - name: Detect Vercel-relevant changes
         shell: bash
         run: |
           set -euo pipefail
+          require=false
+          if [[ "$GITHUB_EVENT_NAME" == "push" ]]; then
+            base='${{ github.event.before }}'
+            if [[ -n "$base" && "$base" != "0000000000000000000000000000000000000000" ]]; then
+              git fetch --no-tags --depth=1 origin "$base" || true
+              changed="$(git diff --name-only "$base" "$GITHUB_SHA" 2>/dev/null || git diff --name-only HEAD^ HEAD)"
+            else
+              changed="$(git diff --name-only HEAD^ HEAD 2>/dev/null || true)"
+            fi
+            printf 'Changed files:\n%s\n' "$changed"
+            if grep -Eq '^(src/|components/|public/|index\.html$|package(-lock)?\.json$|vite\.config\.|capacitor\.config\.|vercel\.json$)' <<<"$changed"; then
+              require=true
+            fi
+          fi
+          echo "REQUIRE_EXACT_VERCEL=$require" >> "$GITHUB_ENV"
+
+      - name: Verify Vercel production release
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ "$REQUIRE_EXACT_VERCEL" != "true" ]]; then
+            body="$(curl -L --fail --silent --show-error --retry 3 --retry-all-errors --connect-timeout 8 --max-time 25 "${BASE_URL}/release.json?run=${GITHUB_RUN_ID}")"
+            live_sha="$(printf '%s\n' "$body" | sed -n 's/.*"commit"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' | head -n 1)"
+            [[ -n "$live_sha" ]] || { echo 'Current ON CALL production release metadata is unavailable'; echo "$body"; exit 1; }
+            echo "No frontend change requires a new Vercel SHA. Current production commit: ${live_sha}."
+            exit 0
+          fi
           for attempt in $(seq 1 72); do
             body="$(curl -L --silent --show-error --connect-timeout 8 --max-time 15 "${BASE_URL}/release.json?run=${GITHUB_RUN_ID}-${attempt}" || true)"
             live_sha="$(printf '%s\n' "$body" | sed -n 's/.*"commit"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' | head -n 1)"
@@ -53,34 +84,14 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          routes=(
-            "/"
-            "/provider"
-            "/provider/activate"
-            "/apply"
-            "/ops"
-            "/privacy"
-            "/terms"
-            "/support"
-            "/auth/confirm"
-            "/auth/reset"
-          )
+          routes=("/" "/provider" "/provider/activate" "/apply" "/ops" "/privacy" "/terms" "/support" "/auth/confirm" "/auth/reset")
           for route in "${routes[@]}"; do
             out="$(mktemp)"
             code="$(curl -L --silent --show-error --retry 3 --retry-all-errors --connect-timeout 8 --max-time 25 -o "$out" -w '%{http_code}' "${BASE_URL}${route}")"
-            if [[ "$code" != "200" ]]; then
-              echo "Production route failed: ${route} -> HTTP ${code}"
-              cat "$out"
-              exit 1
-            fi
+            if [[ "$code" != "200" ]]; then echo "Production route failed: ${route} -> HTTP ${code}"; cat "$out"; exit 1; fi
             bytes="$(wc -c < "$out" | tr -d ' ')"
-            if [[ "$bytes" -lt 200 ]]; then
-              echo "Production route returned an unexpectedly small response: ${route} (${bytes} bytes)"
-              cat "$out"
-              exit 1
-            fi
-            echo "OK ${route} (${bytes} bytes)"
-            rm -f "$out"
+            if [[ "$bytes" -lt 200 ]]; then echo "Production route returned an unexpectedly small response: ${route} (${bytes} bytes)"; cat "$out"; exit 1; fi
+            echo "OK ${route} (${bytes} bytes)"; rm -f "$out"
           done
 
       - name: Verify production brand and PWA assets
@@ -89,8 +100,5 @@ jobs:
           set -euo pipefail
           home="$(curl -L --fail --silent --show-error --retry 3 --retry-all-errors --connect-timeout 8 --max-time 25 "${BASE_URL}/")"
           grep -qi 'ON CALL' <<<"$home" || { echo 'ON CALL production brand shell is missing'; exit 1; }
-          for asset in /manifest.json /marketplace-sw.js /release.json; do
-            curl -L --fail --silent --show-error --retry 3 --retry-all-errors --connect-timeout 8 --max-time 25 "${BASE_URL}${asset}" >/dev/null
-            echo "OK ${asset}"
-          done
+          for asset in /manifest.json /marketplace-sw.js /release.json; do curl -L --fail --silent --show-error --retry 3 --retry-all-errors --connect-timeout 8 --max-time 25 "${BASE_URL}${asset}" >/dev/null; echo "OK ${asset}"; done
           echo 'ON CALL production smoke passed.'
