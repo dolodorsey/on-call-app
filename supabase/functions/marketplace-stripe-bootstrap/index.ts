@@ -18,7 +18,7 @@ Deno.serve(async req=>{
   const admin=createClient(url,service,{auth:{persistSession:false,autoRefreshToken:false}});const readSecret=async(name:string)=>{const runtime=Deno.env.get(name);if(runtime)return runtime;const{data,error}=await admin.rpc('sos_get_runtime_secret',{secret_name:name});return error||!data?'':String(data)};
   const stripeKey=await readSecret('STRIPE_SECRET_KEY');if(!stripeKey)return json({ready:false,error:'Stripe server credential is not configured. Restore that credential, then run bootstrap again.'},503);
   const endpoint=`${url}/functions/v1/stripe-v2-account-webhook`;
-  const list=await stripeV2(stripeKey,'/v2/core/event_destinations?include[]=webhook_endpoint.url&limit=100',{method:'GET'});let existing=(list.data||[]).find((d:any)=>d.name===DESTINATION_NAME||d?.webhook_endpoint?.url===endpoint);
+  const list=await stripeV2(stripeKey,'/v2/core/event_destinations?include%5B0%5D=webhook_endpoint.url&limit=100',{method:'GET'});let existing=(list.data||[]).find((d:any)=>d.name===DESTINATION_NAME||d?.webhook_endpoint?.url===endpoint);
   const storedThinSecret=await readSecret('STRIPE_V2_ACCOUNT_WEBHOOK_SECRET');
   if(existing&&storedThinSecret)return json({ready:true,created:false,event_destination_id:existing.id,status:existing.status,endpoint});
   if(existing&&!storedThinSecret){await stripeV2(stripeKey,`/v2/core/event_destinations/${encodeURIComponent(existing.id)}`,{method:'DELETE'});existing=null;}
