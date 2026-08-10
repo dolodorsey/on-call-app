@@ -24,6 +24,15 @@ test('service availability copy is driven per service, not by one global supply 
 test('signed-out and home copy never promises universal live booking', () => {
   assert.match(truth, /Browse services now, then book where verified provider coverage is active\./)
   assert.match(truth, /Booking unlocks service-by-service as verified coverage activates\./)
+  assert.match(truth, /Popular services/)
+  assert.match(truth, /Browse services/)
+})
+
+test('public target-market count comes from the live backend instead of hardcoded landing copy', () => {
+  assert.match(truth, /oncall-health/)
+  assert.match(truth, /checks\?\.catalog\?\.active_zones/)
+  assert.match(truth, /label==='TARGET MARKETS'/)
+  assert.match(truth, /strong\.textContent=String\(activeZones\)/)
 })
 
 test('tracker hides the Atlanta fallback when a manual-address booking has no coordinates', () => {
