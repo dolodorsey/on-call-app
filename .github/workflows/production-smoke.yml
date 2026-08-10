@@ -47,7 +47,7 @@ jobs:
         run: |
           set -euo pipefail
           health="$(curl -L --fail --silent --show-error --retry 3 --retry-all-errors --connect-timeout 8 --max-time 25 "$BACKEND_HEALTH_URL")"
-          printf '%s' "$health" | python3 -c 'import json,sys; d=json.load(sys.stdin); p=d.get("checks",{}).get("payments",{}); c=d.get("checks",{}).get("catalog",{}); push=d.get("checks",{}).get("push",{}); assert d.get("software_status")=="ok", d; assert d.get("software_ready") is True, d; assert p.get("stripe_server_credential") is True, d; assert p.get("webhook_signature_secret") is True, d; assert p.get("payments_table_reachable") is True, d; assert push.get("ready") is True, d; assert int(c.get("active_services") or 0)>0, d; assert int(c.get("active_zones") or 0)>0, d; print("ON CALL backend software OK; activation status:", d.get("activation_status"))'
+          printf '%s' "$health" | python3 -c 'import json,sys; d=json.load(sys.stdin); p=d.get("checks",{}).get("payments",{}); c=d.get("checks",{}).get("catalog",{}); push=d.get("checks",{}).get("push",{}); support=d.get("checks",{}).get("support",{}); assert d.get("software_status")=="ok", d; assert d.get("software_ready") is True, d; assert p.get("stripe_server_credential") is True, d; assert p.get("webhook_signature_secret") is True, d; assert p.get("payments_table_reachable") is True, d; assert push.get("ready") is True, d; assert support.get("table_reachable") is True, d; assert int(c.get("active_services") or 0)>0, d; assert int(c.get("active_zones") or 0)>0, d; print("ON CALL backend software OK; activation status:", d.get("activation_status"))'
 
       - name: Verify public production routes
         shell: bash
@@ -56,7 +56,9 @@ jobs:
           routes=(
             "/"
             "/provider"
+            "/provider/activate"
             "/apply"
+            "/ops"
             "/privacy"
             "/terms"
             "/support"
