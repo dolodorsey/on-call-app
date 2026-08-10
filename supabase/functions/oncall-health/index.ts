@@ -38,7 +38,8 @@ Deno.serve(async (req: Request) => {
 
   const fifteenMinAgo = new Date(Date.now() - 15 * 60_000).toISOString();
   const [activeServices, activeCategories, activeZones, availableProviders, liveProviders,
-         openBookings, pendingPayments, pricingRules, stripeSource, webhookSource] = await Promise.all([
+         openBookings, pendingPayments, pricingRules, stripeSource, webhookSource,
+         vapidPublicSource, vapidPrivateSource, pushSubscriptions, pushDeliveries] = await Promise.all([
     count("oc_service_catalog", (q) => q.eq("is_active", true)),
     count("oc_service_categories", (q) => q.eq("is_active", true)),
     count("oc_service_zones", (q) => q.eq("is_active", true)),
@@ -49,8 +50,13 @@ Deno.serve(async (req: Request) => {
     count("oc_pricing_rules", (q) => q.eq("is_active", true)),
     secret("STRIPE_SECRET_KEY"),
     secret("STRIPE_WEBHOOK_SECRET"),
+    secret("MARKETPLACE_VAPID_PUBLIC_KEY"),
+    secret("MARKETPLACE_VAPID_PRIVATE_KEY"),
+    count("marketplace_push_subscriptions"),
+    count("marketplace_push_deliveries"),
   ]);
 
+  const pushReady=vapidPublicSource!=="missing"&&vapidPrivateSource!=="missing"&&pushSubscriptions!==null&&pushDeliveries!==null;
   checks.catalog = { active_services: activeServices, active_categories: activeCategories, active_zones: activeZones };
   checks.supply = { available_providers: availableProviders, live_providers: liveProviders };
   checks.demand = { open_bookings: openBookings };
@@ -63,6 +69,15 @@ Deno.serve(async (req: Request) => {
     take_rate_rules_configured: pricingRules,
     money_unit: "integer_cents",
   };
+  checks.push = {
+    ready: pushReady,
+    vapid_public_key: vapidPublicSource!=="missing",
+    vapid_private_key: vapidPrivateSource!=="missing",
+    subscription_table_reachable: pushSubscriptions!==null,
+    delivery_table_reachable: pushDeliveries!==null,
+    subscriptions: pushSubscriptions,
+    delivery_rows: pushDeliveries,
+  };
 
   if (activeServices === null || activeCategories === null || activeZones === null) softwareProblems.push("catalog_unreadable");
   if (!activeServices) softwareProblems.push("no_active_services");
@@ -73,6 +88,9 @@ Deno.serve(async (req: Request) => {
   if (stripeSource === "missing") softwareProblems.push("stripe_secret_missing");
   if (webhookSource === "missing") softwareProblems.push("stripe_webhook_secret_missing");
   if (!pricingRules) softwareProblems.push("no_take_rate_configured");
+  if (vapidPublicSource === "missing") softwareProblems.push("push_public_key_missing");
+  if (vapidPrivateSource === "missing") softwareProblems.push("push_private_key_missing");
+  if (pushSubscriptions === null || pushDeliveries === null) softwareProblems.push("push_tables_unreadable");
 
   if (availableProviders === 0) activationBlockers.push("no_available_providers");
   if (liveProviders === 0) activationBlockers.push("no_live_providers");
