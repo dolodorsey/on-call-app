@@ -17,13 +17,18 @@ Deno.serve(async req=>{
   const url=Deno.env.get('SUPABASE_URL')||'',service=Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')||'';
   if(!url||!service)return json({error:'Coverage status unavailable'},503,origin);
   const admin=createClient(url,service,{auth:{persistSession:false,autoRefreshToken:false}});
-  const [oc,sos]=await Promise.all([admin.rpc('oc_public_service_coverage'),admin.rpc('sos_public_service_coverage')]);
+  const [oc,sos]=await Promise.all([admin.rpc('oc_public_service_coverage_v2'),admin.rpc('sos_public_service_coverage')]);
   if(oc.error||sos.error){console.error('public coverage snapshot failed',{oc:oc.error?.message,sos:sos.error?.message});return json({error:'Coverage status unavailable'},503,origin);}
-  const summarize=(rows:any[]|null)=>{
-    const list=Array.isArray(rows)?rows:[];
-    const services=list.map(row=>({service_id:String(row?.service_id||''),service_name:String(row?.service_name||''),has_verified_supply:Boolean(row?.has_verified_supply)}));
-    const covered=list.filter(row=>Boolean(row?.has_verified_supply));
-    return {services_total:list.length,services_with_verified_supply:covered.length,verified_supply_count:covered.reduce((sum,row)=>sum+Number(row?.verified_supply_count||0),0),has_verified_supply:covered.length>0,services};
-  };
-  return json({generated_at:new Date().toISOString(),on_call:summarize(oc.data),sos:summarize(sos.data)},200,origin);
+  const onCallRows=Array.isArray(oc.data)?oc.data:[];
+  const onCallServices=onCallRows.map((row:any)=>({service_id:String(row?.service_id||''),service_name:String(row?.service_name||''),verified_supply_count:Number(row?.verified_supply_count||0),live_supply_count:Number(row?.live_supply_count||0),has_verified_supply:Boolean(row?.has_verified_supply),has_live_supply:Boolean(row?.has_live_supply)}));
+  const onCallVerified=onCallServices.filter((row:any)=>row.has_verified_supply);
+  const onCallLive=onCallServices.filter((row:any)=>row.has_live_supply);
+  const sosRows=Array.isArray(sos.data)?sos.data:[];
+  const sosServices=sosRows.map((row:any)=>({service_id:String(row?.service_id||''),service_name:String(row?.service_name||''),has_verified_supply:Boolean(row?.has_verified_supply)}));
+  const sosCovered=sosServices.filter((row:any)=>row.has_verified_supply);
+  return json({
+    generated_at:new Date().toISOString(),
+    on_call:{services_total:onCallServices.length,services_with_verified_supply:onCallVerified.length,services_with_live_supply:onCallLive.length,verified_supply_count:onCallVerified.reduce((sum:number,row:any)=>sum+row.verified_supply_count,0),live_supply_count:onCallLive.reduce((sum:number,row:any)=>sum+row.live_supply_count,0),has_verified_supply:onCallVerified.length>0,has_live_supply:onCallLive.length>0,services:onCallServices},
+    sos:{services_total:sosServices.length,services_with_verified_supply:sosCovered.length,verified_supply_count:sosRows.filter((row:any)=>Boolean(row?.has_verified_supply)).reduce((sum:number,row:any)=>sum+Number(row?.verified_supply_count||0),0),has_verified_supply:sosCovered.length>0,services:sosServices}
+  },200,origin);
 });

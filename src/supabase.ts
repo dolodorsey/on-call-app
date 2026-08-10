@@ -31,6 +31,14 @@ export type MarketplacePaymentsHealth = {
   webhooks: string;
   message: string;
 };
+export type OnCallServiceCoverage = {
+  service_id: string;
+  service_name: string;
+  verified_supply_count: number;
+  live_supply_count: number;
+  has_verified_supply: boolean;
+  has_live_supply: boolean;
+};
 
 let paymentHealthCache: { value: MarketplacePaymentsHealth; checkedAt: number } | null = null;
 export const getMarketplacePaymentsHealth = async (force = false): Promise<MarketplacePaymentsHealth> => {
@@ -53,6 +61,25 @@ export const assertMarketplacePaymentsReady = async () => {
   const health = await getMarketplacePaymentsHealth(true);
   if (!health.ready) throw new Error('ON CALL payments are temporarily unavailable while secure Stripe server credentials are being restored. No charge was attempted.');
   return health;
+};
+
+export const getOnCallServiceCoverage = async (serviceId?: string): Promise<OnCallServiceCoverage | OnCallServiceCoverage[] | null> => {
+  const { data, error } = await supabase.rpc('oc_public_service_coverage_v2');
+  if (error) throw new Error('ON CALL provider coverage could not be confirmed. No booking was created.');
+  const rows = (data || []) as OnCallServiceCoverage[];
+  if (!serviceId) return rows;
+  return rows.find((row) => row.service_id === serviceId) || null;
+};
+
+export const assertOnCallServiceSupply = async (serviceId: string, scheduledAt?: string) => {
+  const coverage = await getOnCallServiceCoverage(serviceId) as OnCallServiceCoverage | null;
+  if (!coverage?.has_verified_supply) {
+    throw new Error('No verified ON CALL provider can fulfill this service yet. No booking was created.');
+  }
+  if (!scheduledAt && !coverage.has_live_supply) {
+    throw new Error('No verified ON CALL provider is on duty for this service right now. Schedule ahead or choose another service. No booking was created.');
+  }
+  return coverage;
 };
 
 export const signUp = async (email: string, password: string, fullName: string, role: 'customer' | 'provider') => {
@@ -99,8 +126,8 @@ const legacyResolveMarket = (address: string) => {
   return markets.find(([,state,aliases]) => aliases.some(alias => normalized.includes(alias)) && new RegExp(`(^|\\s)${state.toLowerCase()}(\\s|$)`).test(normalized)) || null;
 };
 
-// Compatibility helper for older call sites. It must still use the same controlled
-// catalog/market RPC as the current marketplace client; it never trusts client price.
+// Compatibility helper for older call sites. It still uses the controlled catalog/market
+// RPC and now preflights the same verified/live provider supply enforced by the database.
 export const createBooking = async (booking: {
   customer_id: string; service_id?: string; service_name: string; category_name: string; address: string;
   lat?: number; lng?: number; total_price: number; scheduled_at?: string;
@@ -114,6 +141,7 @@ export const createBooking = async (booking: {
     serviceId = service?.id || '';
   }
   if (!serviceId) throw new Error('Selected ON CALL service is not in the active catalog.');
+  await assertOnCallServiceSupply(serviceId, booking.scheduled_at);
   const market = legacyResolveMarket(booking.address);
   if (!market) throw new Error('Enter a full service address including a supported ON CALL city and state.');
   const { data, error } = await supabase.rpc('oc_request_market_service', {
