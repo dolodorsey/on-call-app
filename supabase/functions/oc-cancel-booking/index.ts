@@ -15,13 +15,15 @@ Deno.serve(async(req)=>{
   const {data:profile}=await admin.from('oc_users').select('id').eq('auth_id',user.id).maybeSingle(); if(!profile)throw new Error('ON CALL account required');
   const {data:booking}=await admin.from('oc_bookings').select('*').eq('id',bookingId).eq('customer_id',profile.id).maybeSingle(); if(!booking)throw new Error('Booking not found');
   const {data:quote,error:qerr}=await admin.rpc('oc_customer_cancellation_quote',{p_booking_id:bookingId}); if(qerr)throw qerr; const q=Array.isArray(quote)?quote[0]:quote;
-  const responseQuote={bookingId,status:q.booking_status,canCancel:Boolean(q.can_cancel),feeAmount:Number(q.fee_amount||0),providerCompensation:Number(q.provider_compensation||0),reason:String(q.reason||''),policyVersion:Number(q.policy_version||1)};
+  const feeCents=Math.max(0,Math.round(Number(q?.fee_cents||0)));
+  const providerCents=Math.max(0,Math.round(Number(q?.provider_compensation_cents||0)));
+  const platformCents=Math.max(0,feeCents-providerCents);
+  const responseQuote={bookingId,status:q.booking_status,canCancel:Boolean(q.can_cancel),feeAmount:feeCents/100,providerCompensation:providerCents/100,reason:String(q.reason||''),policyVersion:Number(q.policy_version||1)};
   if(action==='quote')return json(responseQuote);
   if(action!=='cancel')return json({error:'action must be quote or cancel'},422);
   if(!q?.can_cancel)throw new Error(q?.reason||'Booking cannot be canceled');
-  if(expectedFeeAmount!=null&&Math.abs(Number(expectedFeeAmount)-Number(q.fee_amount||0))>0.009)throw new Error('Cancellation fee changed. Please review the updated quote.');
+  if(expectedFeeAmount!=null&&Math.round(Number(expectedFeeAmount)*100)!==feeCents)throw new Error('Cancellation fee changed. Please review the updated quote.');
   const {data:payment}=await admin.from('oc_booking_payments').select('*').eq('booking_id',bookingId).maybeSingle();
-  const feeCents=Math.max(0,Math.round(Number(q.fee_amount||0)*100)),providerCents=Math.max(0,Math.round(Number(q.provider_compensation||0)*100)),platformCents=Math.max(0,feeCents-providerCents);
   if(payment?.stripe_payment_intent_id){
    if(!stripeKey)throw new Error('STRIPE_SECRET_KEY is not configured'); const stripe=new Stripe(stripeKey,{httpClient:Stripe.createFetchHttpClient()});
    if(feeCents===0){
