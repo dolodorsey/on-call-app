@@ -29,11 +29,15 @@ export default function AuthConfirmationRoute(){
          if(!session){
            session=await new Promise(resolve=>{
              let settled=false
-             const timer=window.setTimeout(()=>{if(settled)return;settled=true;subscription.unsubscribe();resolve(null)},2500)
-             const{data:{subscription}}=supabase.auth.onAuthStateChange((_event,next)=>{
+             let subscription:{unsubscribe:()=>void}|null=null
+             const finishWait=(value:unknown)=>{if(settled)return;settled=true;subscription?.unsubscribe();resolve(value)}
+             const timer=window.setTimeout(()=>finishWait(null),2500)
+             const{data}=supabase.auth.onAuthStateChange((_event,next)=>{
                if(settled||!next)return
-               settled=true;window.clearTimeout(timer);subscription.unsubscribe();resolve(next)
+               window.clearTimeout(timer)
+               finishWait(next)
              })
+             subscription=data.subscription
            }) as any
          }
          if(!session)throw new Error('Confirmation link is incomplete or has expired.')
