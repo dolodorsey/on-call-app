@@ -42,6 +42,7 @@ import MarketplaceOpsAlertsHost from './MarketplaceOpsAlertsHost'
 import MarketplaceLaunchReadinessHost from './MarketplaceLaunchReadinessHost'
 import InteractionContractHost from './InteractionContractHost'
 import MarketplaceTruthHost from './MarketplaceTruthHost'
+import AuthConfirmationRoute from './AuthConfirmationRoute'
 import LegalPage from './LegalPage'
 import LegalLinksHost from './LegalLinksHost'
 
@@ -62,6 +63,7 @@ const isOperationsWorkspace = pathname === '/ops'
 const isPrivacy = pathname === '/privacy'
 const isTerms = pathname === '/terms'
 const isSupport = pathname === '/support'
+const isAuthConfirm = pathname === '/auth/confirm'
 
 class RuntimeBoundary extends React.Component<React.PropsWithChildren, { hasError: boolean }> {
   state = { hasError: false }
@@ -85,7 +87,7 @@ ReactDOM.createRoot(rootElement).render(
   <React.StrictMode>
     <RuntimeBoundary>
       <div className="oc-experience" data-app="on-call">
-        {isPrivacy ? <LegalPage kind="privacy"/> : isTerms ? <LegalPage kind="terms"/> : isSupport ? <LegalPage kind="support"/> : <>
+        {isAuthConfirm ? <AuthConfirmationRoute/> : isPrivacy ? <LegalPage kind="privacy"/> : isTerms ? <LegalPage kind="terms"/> : isSupport ? <LegalPage kind="support"/> : <>
           <InteractionContractHost/>
           <MarketplaceTruthHost/>
           <LegalLinksHost/>
