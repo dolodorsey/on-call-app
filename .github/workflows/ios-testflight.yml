@@ -9,6 +9,7 @@ on:
       - 'public/**'
       - 'ios/**'
       - 'scripts/**'
+      - 'tests/**'
       - 'package.json'
       - 'package-lock.json'
       - 'capacitor.config.*'
