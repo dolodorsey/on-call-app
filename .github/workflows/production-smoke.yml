@@ -1,0 +1,63 @@
+name: ON CALL Production Smoke
+
+on:
+  push:
+    branches: [main]
+  schedule:
+    - cron: '17 */6 * * *'
+  workflow_dispatch:
+
+concurrency:
+  group: on-call-production-smoke
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  production-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: Verify public production routes
+        shell: bash
+        env:
+          BASE_URL: https://oncallallday.com
+        run: |
+          set -euo pipefail
+          routes=(
+            "/"
+            "/provider"
+            "/apply"
+            "/privacy"
+            "/terms"
+            "/support"
+            "/auth/confirm"
+            "/auth/reset"
+          )
+          for route in "${routes[@]}"; do
+            out="$(mktemp)"
+            code="$(curl -L --silent --show-error --retry 3 --retry-all-errors --connect-timeout 8 --max-time 25 -o "$out" -w '%{http_code}' "${BASE_URL}${route}")"
+            if [[ "$code" != "200" ]]; then
+              echo "Production route failed: ${route} -> HTTP ${code}"
+              cat "$out"
+              exit 1
+            fi
+            bytes="$(wc -c < "$out" | tr -d ' ')"
+            if [[ "$bytes" -lt 200 ]]; then
+              echo "Production route returned an unexpectedly small response: ${route} (${bytes} bytes)"
+              cat "$out"
+              exit 1
+            fi
+            echo "OK ${route} (${bytes} bytes)"
+            rm -f "$out"
+          done
+
+      - name: Verify production brand shell and PWA assets
+        shell: bash
+        run: |
+          set -euo pipefail
+          home="$(curl -L --fail --silent --show-error --retry 3 --retry-all-errors --connect-timeout 8 --max-time 25 https://oncallallday.com/)"
+          grep -qi 'ON CALL' <<<"$home" || { echo 'ON CALL production brand shell is missing'; exit 1; }
+          curl -L --fail --silent --show-error --retry 3 --retry-all-errors --connect-timeout 8 --max-time 25 https://oncallallday.com/manifest.json >/dev/null
+          echo 'ON CALL production smoke passed.'
