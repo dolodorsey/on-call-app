@@ -1,4 +1,4 @@
-import { supabase } from './supabase'
+import { assertOnCallServiceSupply, supabase } from './supabase'
 
 export type MarketplaceCategory = {
   id: string
@@ -130,6 +130,7 @@ export async function createMarketplaceBooking(input: {
 }) {
   const market = resolveServiceMarket(input.address)
   if (!market) throw new Error('Enter a full service address including a supported ON CALL city and state, such as Atlanta, GA.')
+  await assertOnCallServiceSupply(input.serviceId, input.scheduledAt || undefined)
   const { data, error } = await supabase.rpc('oc_request_market_service', {
     p_service_id: input.serviceId,
     p_address: input.address,
