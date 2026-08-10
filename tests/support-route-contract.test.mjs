@@ -4,24 +4,26 @@ import test from 'node:test'
 
 const read = path => fs.readFileSync(new URL(`../${path}`, import.meta.url), 'utf8')
 const main = read('src/main.tsx')
-const legal = read('src/LegalPage.tsx')
+const support = read('src/SupportCenterRoute.tsx')
 const links = read('src/LegalLinksHost.tsx')
 
-test('/support renders the dedicated ON CALL support center instead of the customer marketplace', () => {
+test('/support renders the dedicated authenticated ON CALL support center', () => {
   assert.match(main, /const isSupport = pathname === '\/support'/)
-  assert.match(main, /isSupport \? <LegalPage kind="support"\/>/)
-  assert.match(legal, /type LegalKind='privacy'\|'terms'\|'support'/)
-  assert.match(legal, /Support Center/)
-  assert.match(legal, /function Support\(\)/)
+  assert.match(main, /isSupport \? <SupportCenterRoute\/>/)
+  assert.match(main, /import SupportCenterRoute from '\.\/SupportCenterRoute'/)
+  assert.match(support, /SUPPORT CENTER/)
+  assert.match(support, /Open support case/)
+  assert.match(support, /oc_my_support_tickets/)
+  assert.match(support, /oc_open_support_ticket/)
 })
 
-test('support center routes users to authenticated and provider help paths', () => {
-  assert.match(legal, /\/auth\/reset/)
-  assert.match(legal, /\/apply/)
-  assert.match(legal, /\/provider\/activate/)
-  assert.match(legal, /Booking help/)
-  assert.match(legal, /Payments and refunds/)
-  assert.match(legal, /Account privacy and deletion/)
+test('support center uses central auth and real booking choices instead of raw booking IDs', () => {
+  assert.match(support, /import \{getBookings,signIn,supabase\}/)
+  assert.match(support, /getBookings\(nextSession\.user\.id\)/)
+  assert.match(support, /Related booking/)
+  assert.match(support, /No booking \/ general account issue/)
+  assert.match(support, /\/auth\/reset/)
+  assert.doesNotMatch(support, /placeholder="Only if this case is about a booking"/)
 })
 
 test('global footer support link opens /support rather than bypassing the support center', () => {
