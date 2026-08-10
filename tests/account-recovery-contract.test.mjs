@@ -11,6 +11,14 @@ test('ON CALL recovery is mounted on customer/provider auth surfaces',()=>{
  assert.match(host,/Forgot password\?/)
 })
 
+test('/auth/reset directly opens the real recovery request instead of falling through silently',()=>{
+ const host=read('src/AccountRecoveryHost.tsx')
+ assert.match(host,/initialPath==='\/auth\/reset'/)
+ assert.match(host,/setMode\('request'\);setOpen\(true\)/)
+ assert.match(host,/Enter the email on your ON CALL account to receive a secure password-reset link/)
+ assert.match(host,/if\(path==='\/auth\/reset'\)\{setVisible\(false\);return\}/)
+})
+
 test('reset email uses primary ON CALL domain and Supabase password recovery event',()=>{
  const host=read('src/AccountRecoveryHost.tsx')
  assert.match(host,/resetPasswordForEmail/)
