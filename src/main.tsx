@@ -14,6 +14,8 @@ import './provider-verification-readiness.css'
 import './provider-account-activation.css'
 import './marketplace-ops-alerts.css'
 import './marketplace-launch-readiness.css'
+import './support-center.css'
+import './support-ops.css'
 import './root-layout-rescue.css'
 import './account-recovery.css'
 import OnCallEntry from './OnCallEntry'
@@ -40,6 +42,8 @@ import ProviderApplicationActivationLinkHost from './ProviderApplicationActivati
 import ProviderCustomerTrustHost from './ProviderCustomerTrustHost'
 import MarketplaceOpsAlertsHost from './MarketplaceOpsAlertsHost'
 import MarketplaceLaunchReadinessHost from './MarketplaceLaunchReadinessHost'
+import SupportOpsHost from './SupportOpsHost'
+import SupportCenterRoute from './SupportCenterRoute'
 import InteractionContractHost from './InteractionContractHost'
 import MarketplaceTruthHost from './MarketplaceTruthHost'
 import AuthConfirmationRoute from './AuthConfirmationRoute'
@@ -87,12 +91,12 @@ ReactDOM.createRoot(rootElement).render(
   <React.StrictMode>
     <RuntimeBoundary>
       <div className="oc-experience" data-app="on-call">
-        {isAuthConfirm ? <AuthConfirmationRoute/> : isPrivacy ? <LegalPage kind="privacy"/> : isTerms ? <LegalPage kind="terms"/> : isSupport ? <LegalPage kind="support"/> : <>
+        {isAuthConfirm ? <AuthConfirmationRoute/> : isPrivacy ? <LegalPage kind="privacy"/> : isTerms ? <LegalPage kind="terms"/> : isSupport ? <SupportCenterRoute/> : <>
           <InteractionContractHost/>
           <MarketplaceTruthHost/>
           <LegalLinksHost/>
           {isOperationsWorkspace ? (
-            <Suspense fallback={<RouteLoading/>}><><OperationsCommand/><ProviderVerificationOpsHost/><MarketplaceOpsAlertsHost/><MarketplaceLaunchReadinessHost/></></Suspense>
+            <Suspense fallback={<RouteLoading/>}><><OperationsCommand/><ProviderVerificationOpsHost/><MarketplaceOpsAlertsHost/><MarketplaceLaunchReadinessHost/><SupportOpsHost/></></Suspense>
           ) : <>
             <PaymentReadinessHost/>
             <BookingChatHost/>
