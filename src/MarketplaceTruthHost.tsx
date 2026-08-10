@@ -11,8 +11,14 @@ export default function MarketplaceTruthHost(){
     let observer:MutationObserver|undefined
     let timer:number|undefined
 
+    const observe=()=>observer?.observe(document.body,{childList:true,subtree:true,characterData:true,attributes:true,attributeFilter:['data-verified-coverage','src']})
+
     const applyTruth=(hasVerifiedSupply:boolean,activeZones:number|null)=>{
       if(stopped)return
+      // Text writes are themselves DOM mutations. Pause the observer while the
+      // truth pass runs so it cannot recursively trigger itself and starve the
+      // browser event loop before React paints the application.
+      observer?.disconnect()
       const replacements:Record<string,string>={
         'LIVE SERVICE TYPES':'CATALOG SERVICE TYPES',
         'LAUNCH MARKETS':'TARGET MARKETS',
@@ -80,6 +86,7 @@ export default function MarketplaceTruthHost(){
           if(pin)pin.style.visibility='visible'
         }
       }
+      if(!stopped)observe()
     }
 
     const refresh=async()=>{
@@ -103,7 +110,7 @@ export default function MarketplaceTruthHost(){
       applyTruth(hasVerifiedSupply,activeZones)
       observer?.disconnect()
       observer=new MutationObserver(()=>applyTruth(hasVerifiedSupply,activeZones))
-      observer.observe(document.body,{childList:true,subtree:true,characterData:true,attributes:true,attributeFilter:['data-verified-coverage','src']})
+      observe()
     }
 
     void refresh()

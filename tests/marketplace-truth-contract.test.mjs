@@ -21,6 +21,18 @@ test('service availability copy is driven per service, not by one global supply 
   assert.match(truth, /attributeFilter:\['data-verified-coverage','src'\]/)
 })
 
+test('marketplace truth DOM updates cannot recursively trigger their own observer', () => {
+  const applyStart = truth.indexOf('const applyTruth=')
+  const disconnect = truth.indexOf('observer?.disconnect()', applyStart)
+  const firstWrite = truth.indexOf('node.textContent=', applyStart)
+  const reconnect = truth.indexOf('if(!stopped)observe()', applyStart)
+
+  assert.ok(applyStart >= 0)
+  assert.ok(disconnect > applyStart && disconnect < firstWrite)
+  assert.ok(reconnect > firstWrite)
+  assert.match(truth, /new MutationObserver\(\(\)=>applyTruth\(hasVerifiedSupply,activeZones\)\)/)
+})
+
 test('signed-out and home copy never promises universal live booking', () => {
   assert.match(truth, /Browse services now, then book where verified provider coverage is active\./)
   assert.match(truth, /Booking unlocks service-by-service as verified coverage activates\./)
