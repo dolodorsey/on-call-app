@@ -27,11 +27,7 @@ jobs:
           set -euo pipefail
           for attempt in $(seq 1 72); do
             body="$(curl -L --silent --show-error --connect-timeout 8 --max-time 15 "${BASE_URL}/release.json?run=${GITHUB_RUN_ID}-${attempt}" || true)"
-            live_sha="$(python3 -c 'import json,sys
-try:
- print(json.load(sys.stdin).get("commit", ""))
-except Exception:
- print("")' <<<"$body")"
+            live_sha="$(printf '%s\n' "$body" | sed -n 's/.*"commit"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' | head -n 1)"
             if [[ "$live_sha" == "$GITHUB_SHA" ]]; then
               echo "Production is serving expected commit ${GITHUB_SHA}."
               break
