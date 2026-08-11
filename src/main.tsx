@@ -19,6 +19,7 @@ import './support-ops.css'
 import './root-layout-rescue.css'
 import './account-recovery.css'
 import OnCallEntry from './OnCallEntry'
+import OnCallShellControl from './OnCallShellControl'
 import OnCallSubcategoryRestoreHost from './OnCallSubcategoryRestoreHost'
 import OnCallEnhancementHost from './OnCallEnhancementHost'
 import CustomerOperationsHost from './CustomerOperationsHost'
@@ -111,7 +112,7 @@ ReactDOM.createRoot(rootElement).render(
               <Suspense fallback={<RouteLoading />}>
                 {isProviderApplication ? <><ProviderApplicationActivationLinkHost/><ProviderApply/></> : <><ProviderActivationAccessHost/><ProviderCommand/><ProviderVerificationReadinessHost/><ProviderRealtimeBridge/><ProviderIssueHost/><ProviderMatchHost/><ProviderNoShowHost/><ProviderReliabilityHost/><ProviderCustomerTrustHost/></>}
               </Suspense>
-            ) : <><OnCallEntry/><OnCallSubcategoryRestoreHost/><CustomerCoverageStatusHost/><CustomerRealtimeBridge/><OnCallEnhancementHost/><CustomerOperationsHost/><CustomerCancellationHost/><CustomerSettlementReviewHost/><CustomerProfileToolsHost/><CustomerReceiptHost/><ShareTrackingHost/></>}
+            ) : <><OnCallEntry/><OnCallShellControl/><OnCallSubcategoryRestoreHost/><CustomerCoverageStatusHost/><CustomerRealtimeBridge/><OnCallEnhancementHost/><CustomerOperationsHost/><CustomerCancellationHost/><CustomerSettlementReviewHost/><CustomerProfileToolsHost/><CustomerReceiptHost/><ShareTrackingHost/></>}
           </>}
         </>}
       </div>
