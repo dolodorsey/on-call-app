@@ -18,10 +18,12 @@ import './support-center.css'
 import './support-ops.css'
 import './root-layout-rescue.css'
 import './account-recovery.css'
+import './on-call-sos-structure.css'
 import OnCallEntry from './OnCallEntry'
 import OnCallShellControl from './OnCallShellControl'
 import OnCallSubcategoryRestoreHost from './OnCallSubcategoryRestoreHost'
 import OnCallEnhancementHost from './OnCallEnhancementHost'
+import OnCallVisualUpgradeHost from './OnCallVisualUpgradeHost'
 import CustomerOperationsHost from './CustomerOperationsHost'
 import CustomerCancellationHost from './CustomerCancellationHost'
 import CustomerSettlementReviewHost from './CustomerSettlementReviewHost'
@@ -93,6 +95,7 @@ ReactDOM.createRoot(rootElement).render(
   <React.StrictMode>
     <RuntimeBoundary>
       <div className="oc-experience" data-app="on-call">
+        <OnCallVisualUpgradeHost/>
         {isAuthConfirm ? <AuthConfirmationRoute/> : isPrivacy ? <LegalPage kind="privacy"/> : isTerms ? <LegalPage kind="terms"/> : isSupport ? <SupportCenterRoute/> : <>
           <InteractionContractHost/>
           <MarketplaceTruthHost/>
