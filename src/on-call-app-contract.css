@@ -1,0 +1,75 @@
+/* Final ON CALL app contract — loaded last.
+   The product must fill the viewport like an application, with navigation
+   anchored to the viewport rather than floating inside a website frame. */
+html,body,#root,.oc-experience,.oc-entry{width:100%!important;max-width:none!important;min-height:100dvh!important;margin:0!important;padding-left:0!important;padding-right:0!important}
+html,body{background:#050b13!important;overscroll-behavior-y:none}
+#root,.oc-experience{overflow-x:hidden!important}
+.oc-entry{border:0!important;border-radius:0!important;box-shadow:none!important}
+
+/* Full-width shell; readable content can keep an internal measure. */
+.oce-top{width:100%!important;max-width:none!important;margin:0!important;padding-top:max(10px,env(safe-area-inset-top))!important}
+.oce-wrap,.oce-main{width:min(100%,1440px)!important;margin-left:auto!important;margin-right:auto!important}
+
+/* Header/nav remains in place on phone, tablet, desktop, and installed PWA. */
+.oce-nav{
+  position:sticky!important;
+  top:0!important;
+  z-index:120!important;
+  width:100%!important;
+  min-height:64px!important;
+  padding-top:max(8px,env(safe-area-inset-top))!important;
+  background:rgba(5,11,19,.92)!important;
+  backdrop-filter:blur(24px)!important;
+  -webkit-backdrop-filter:blur(24px)!important;
+}
+
+/* Animation is the first homescreen visual. It is art only — no component copy
+   or badges are allowed on top of motion. */
+.ece-motion-stage,.oce-motion-stage,.oc2-motion-stage,.oc-current-media{
+  position:relative!important;
+  width:100%!important;
+  overflow:hidden!important;
+}
+.oce-motion-stage{height:clamp(210px,31vw,430px)!important;border-radius:22px!important;margin:18px 0 10px!important}
+.oce-motion-stage video,.oc2-motion-stage video,.oc-current-media__video{width:100%!important;height:100%!important;object-fit:cover!important}
+.oc-current-media__copy,.oc-current-media__signal{display:none!important}
+.oc-current-media__shade{background:linear-gradient(180deg,rgba(6,13,24,.02),rgba(6,13,24,.12))!important}
+
+/* The supporting headline sits after the animation and no longer dominates it. */
+.oce-hero{padding:24px 0 12px!important;max-width:760px!important}
+.oce-hero h1{font-size:clamp(40px,5.8vw,66px)!important;line-height:.92!important;margin:10px 0 14px!important}
+.oce-category-hero h1{font-size:clamp(36px,5vw,58px)!important}
+
+/* Bottom app navigation is always viewport-anchored and safe-area aware. */
+.oc-public-nav{
+  position:fixed!important;
+  left:0!important;
+  right:0!important;
+  bottom:0!important;
+  width:100%!important;
+  max-width:none!important;
+  height:auto!important;
+  min-height:72px!important;
+  padding-bottom:max(6px,env(safe-area-inset-bottom))!important;
+  z-index:500!important;
+}
+.oc-public-utility{margin:-98px auto calc(88px + env(safe-area-inset-bottom))!important}
+.oce-main{padding-bottom:calc(138px + env(safe-area-inset-bottom))!important}
+
+/* Signed-in marketplace chrome follows the same full-screen rule. */
+.oc2-shell,.oc2-app,.oc2-main,.oc2-screen{width:100%!important;max-width:none!important}
+.oc2-nav,.oc2-bottom-nav,[data-oc-fixed-nav]{max-width:none!important}
+
+@media(max-width:900px){
+  .oce-nav{position:sticky!important;top:0!important}
+  .oce-wrap,.oce-main{max-width:100%!important}
+}
+@media(max-width:700px){
+  .oce-motion-stage{height:205px!important;border-radius:18px!important;margin-top:12px!important}
+  .oce-hero{padding-top:18px!important}
+  .oce-hero h1{font-size:clamp(36px,11vw,48px)!important}
+  .oce-top{padding-left:14px!important;padding-right:14px!important}
+  .oce-main{padding-left:14px!important;padding-right:14px!important}
+}
+@media(display-mode:standalone){html,body,#root,.oc-experience,.oc-entry{min-height:100dvh!important}}
+@media(prefers-reduced-motion:reduce){.oce-motion-stage video,.oc2-motion-stage video{display:none!important}}
