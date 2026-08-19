@@ -15,7 +15,7 @@ test('ON CALL provider qualification and live availability stay hard gates',()=>
 test('ON CALL quality outranks distance and proximity is capped at five percent',()=>{
   assert.match(scoreV3,/p_rating,5\)\/5\.0\*100\)\)\*0\.50/)
   assert.match(scoreV3,/p_total_jobs,0\)::numeric\*2\)\)\*0\.45/)
-  const distanceLine=scoreV3.split('\n').find(line=>line.includes('p_distance_miles'))||''
+  const distanceLine=scoreV3.split('\n').find(line=>line.includes('p_distance_miles')&&line.includes('*0.'))||''
   assert.match(distanceLine,/\*0\.05/)
   assert.doesNotMatch(distanceLine,/\*0\.(?:0[6-9]|[1-9][0-9])/)
   assert.match(dispatchSql,/order by match_score desc/)
