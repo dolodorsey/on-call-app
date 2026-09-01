@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import fs from 'node:fs'
 import test from 'node:test'
 
-const migration=fs.readFileSync(new URL('../supabase/migrations/20260901195000_on_call_revoke_public_crm_table_grants.sql',import.meta.url),'utf8')
+const migration=fs.readFileSync(new URL('../supabase/migrations/20260901194730_on_call_revoke_public_crm_table_grants.sql',import.meta.url),'utf8')
 
 test('ON CALL CRM control-plane tables are not client-writable',()=>{
   assert.match(migration,/revoke all on table public\.oc_crm_links from anon, authenticated;/i)
