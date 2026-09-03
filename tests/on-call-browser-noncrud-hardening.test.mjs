@@ -3,7 +3,7 @@ import fs from 'node:fs'
 import test from 'node:test'
 
 const migration = fs.readFileSync(
-  new URL('../supabase/migrations/20260903154000_on_call_browser_noncrud_privilege_hardening.sql', import.meta.url),
+  new URL('../supabase/migrations/20260903154314_on_call_browser_noncrud_privilege_hardening.sql', import.meta.url),
   'utf8',
 )
 
