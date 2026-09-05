@@ -15,7 +15,7 @@ test('ON CALL operational app fails closed until the exact backend is readable',
   assert.match(gate,/No request or charge was attempted/)
   assert.match(main,/OnCallBackendAvailabilityGate/)
   assert.match(main,/function OperationalRoutes\(\)/)
-  assert.match(main,/<OnCallBackendAvailabilityGate>[\s\S]*<InteractionContractHost\/]/)
+  assert.match(main,/<OnCallBackendAvailabilityGate>[\s\S]*<InteractionContractHost\/>/)
 })
 
 test('legal and support surfaces remain available without mounting booking operations',()=>{
