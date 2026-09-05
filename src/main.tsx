@@ -125,7 +125,7 @@ ReactDOM.createRoot(rootElement).render(
     <RuntimeBoundary>
       <div className="oc-experience" data-app="on-call">
         <OnCallVisualUpgradeHost/>
-        {isPrivacy ? <LegalPage kind="privacy"/> : isTerms ? <LegalPage kind="terms"/> : isSupport ? <SupportCenterRoute/> : isAuthConfirm ? <OnCallBackendAvailabilityGate><AuthConfirmationRoute/></OnCallBackendAvailabilityGate> : <OperationalRoutes/>}
+        {isPrivacy ? <LegalPage kind="privacy"/> : isTerms ? <LegalPage kind="terms"/> : isSupport ? <SupportCenterRoute/> : isAuthConfirm ? <AuthConfirmationRoute/> : <OperationalRoutes/>}
       </div>
     </RuntimeBoundary>
   </React.StrictMode>,
