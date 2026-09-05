@@ -27,6 +27,7 @@ import OnCallShellControl from './OnCallShellControl'
 import OnCallSubcategoryRestoreHost from './OnCallSubcategoryRestoreHost'
 import OnCallEnhancementHost from './OnCallEnhancementHost'
 import OnCallVisualUpgradeHost from './OnCallVisualUpgradeHost'
+import OnCallBackendAvailabilityGate from './OnCallBackendAvailabilityGate'
 import CustomerOperationsHost from './CustomerOperationsHost'
 import CustomerCancellationHost from './CustomerCancellationHost'
 import CustomerSettlementReviewHost from './CustomerSettlementReviewHost'
@@ -91,6 +92,31 @@ function RouteLoading() {
   return <div className="oc-route-loading" role="status" aria-live="polite"><div className="oc-route-loading__mark">OC</div><div className="oc-route-loading__pulse"/><span>{label}</span></div>
 }
 
+function OperationalRoutes(){
+  return <OnCallBackendAvailabilityGate>
+    <InteractionContractHost/>
+    <MarketplaceTruthHost/>
+    <LegalLinksHost/>
+    {isOperationsWorkspace ? (
+      <Suspense fallback={<RouteLoading/>}><><OperationsCommand/><ProviderVerificationOpsHost/><MarketplaceOpsAlertsHost/><MarketplaceLaunchReadinessHost/><SupportOpsHost/></></Suspense>
+    ) : <>
+      <PaymentReadinessHost/>
+      <BookingChatHost/>
+      <PushRegistrationHost/>
+      <AccountRecoveryHost/>
+      <AccountDeletionHost/>
+      <NotificationInboxHost/>
+      {isProviderActivation ? (
+        <ProviderAccountActivation/>
+      ) : isProviderApplication || isProviderWorkspace ? (
+        <Suspense fallback={<RouteLoading />}>
+          {isProviderApplication ? <><ProviderApplicationActivationLinkHost/><ProviderApply/></> : <><ProviderActivationAccessHost/><ProviderCommand/><ProviderVerificationReadinessHost/><ProviderRealtimeBridge/><ProviderIssueHost/><ProviderMatchHost/><ProviderNoShowHost/><ProviderReliabilityHost/><ProviderCustomerTrustHost/></>}
+        </Suspense>
+      ) : <><OnCallEntry/><OnCallShellControl/><OnCallSubcategoryRestoreHost/><CustomerCoverageStatusHost/><CustomerRealtimeBridge/><OnCallEnhancementHost/><CustomerOperationsHost/><CustomerCancellationHost/><CustomerSettlementReviewHost/><CustomerProfileToolsHost/><CustomerReceiptHost/><ShareTrackingHost/></>}
+    </>}
+  </OnCallBackendAvailabilityGate>
+}
+
 const rootElement = document.getElementById('root')
 if (!rootElement) throw new Error('ON CALL root element is missing')
 
@@ -99,28 +125,7 @@ ReactDOM.createRoot(rootElement).render(
     <RuntimeBoundary>
       <div className="oc-experience" data-app="on-call">
         <OnCallVisualUpgradeHost/>
-        {isAuthConfirm ? <AuthConfirmationRoute/> : isPrivacy ? <LegalPage kind="privacy"/> : isTerms ? <LegalPage kind="terms"/> : isSupport ? <SupportCenterRoute/> : <>
-          <InteractionContractHost/>
-          <MarketplaceTruthHost/>
-          <LegalLinksHost/>
-          {isOperationsWorkspace ? (
-            <Suspense fallback={<RouteLoading/>}><><OperationsCommand/><ProviderVerificationOpsHost/><MarketplaceOpsAlertsHost/><MarketplaceLaunchReadinessHost/><SupportOpsHost/></></Suspense>
-          ) : <>
-            <PaymentReadinessHost/>
-            <BookingChatHost/>
-            <PushRegistrationHost/>
-            <AccountRecoveryHost/>
-            <AccountDeletionHost/>
-            <NotificationInboxHost/>
-            {isProviderActivation ? (
-              <ProviderAccountActivation/>
-            ) : isProviderApplication || isProviderWorkspace ? (
-              <Suspense fallback={<RouteLoading />}>
-                {isProviderApplication ? <><ProviderApplicationActivationLinkHost/><ProviderApply/></> : <><ProviderActivationAccessHost/><ProviderCommand/><ProviderVerificationReadinessHost/><ProviderRealtimeBridge/><ProviderIssueHost/><ProviderMatchHost/><ProviderNoShowHost/><ProviderReliabilityHost/><ProviderCustomerTrustHost/></>}
-              </Suspense>
-            ) : <><OnCallEntry/><OnCallShellControl/><OnCallSubcategoryRestoreHost/><CustomerCoverageStatusHost/><CustomerRealtimeBridge/><OnCallEnhancementHost/><CustomerOperationsHost/><CustomerCancellationHost/><CustomerSettlementReviewHost/><CustomerProfileToolsHost/><CustomerReceiptHost/><ShareTrackingHost/></>}
-          </>}
-        </>}
+        {isPrivacy ? <LegalPage kind="privacy"/> : isTerms ? <LegalPage kind="terms"/> : isSupport ? <SupportCenterRoute/> : isAuthConfirm ? <OnCallBackendAvailabilityGate><AuthConfirmationRoute/></OnCallBackendAvailabilityGate> : <OperationalRoutes/>}
       </div>
     </RuntimeBoundary>
   </React.StrictMode>,
