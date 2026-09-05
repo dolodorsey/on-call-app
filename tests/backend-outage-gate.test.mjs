@@ -18,10 +18,13 @@ test('ON CALL operational app fails closed until the exact backend is readable',
   assert.match(main,/<OnCallBackendAvailabilityGate>[\s\S]*<InteractionContractHost\/>/)
 })
 
-test('legal and support surfaces remain available without mounting booking operations',()=>{
+test('legal and support surfaces remain available while auth confirmation gates internally',()=>{
   const main=read('src/main.tsx')
+  const callback=read('src/AuthConfirmationRoute.tsx')
   assert.match(main,/isPrivacy \? <LegalPage kind="privacy"\/>/)
   assert.match(main,/isTerms \? <LegalPage kind="terms"\/>/)
   assert.match(main,/isSupport \? <SupportCenterRoute\/>/)
-  assert.match(main,/isAuthConfirm \? <OnCallBackendAvailabilityGate><AuthConfirmationRoute\/><\/OnCallBackendAvailabilityGate>/)
+  assert.match(main,/isAuthConfirm \? <AuthConfirmationRoute\/>/)
+  assert.match(callback,/OnCallBackendAvailabilityGate/)
+  assert.match(callback,/<OnCallBackendAvailabilityGate><AuthConfirmationRouteInner\/><\/OnCallBackendAvailabilityGate>/)
 })
