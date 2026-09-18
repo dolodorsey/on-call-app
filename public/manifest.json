@@ -1,14 +1,38 @@
 {
+  "id": "/",
   "name": "ON CALL — Your Button for Everything",
   "short_name": "On Call",
-  "description": "Book trusted home services, personal care, childcare, and more — all in one app.",
-  "start_url": "/",
+  "description": "Book trusted home services, personal care, family, business and more — all in one app.",
+  "start_url": "/?source=pwa",
+  "scope": "/",
   "display": "standalone",
-  "background_color": "#f8f9fc",
+  "background_color": "#06101d",
   "theme_color": "#1a6bff",
   "orientation": "portrait",
+  "categories": [
+    "utilities",
+    "business",
+    "lifestyle"
+  ],
+  "prefer_related_applications": false,
   "icons": [
-    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png" },
-    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png" }
+    {
+      "src": "/icon-192.svg",
+      "sizes": "192x192",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-512.svg",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-512.svg",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
+    }
   ]
 }
