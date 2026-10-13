@@ -11,11 +11,11 @@ const endpoint=component.match(/const APPLICATION_ENDPOINT=('.*?');/)[1];
 const receiptKey=component.match(/const RECEIPT_KEY=('.*?');/)[1];
 const edge=stripTypeScriptTypes(readFileSync(new URL('../supabase/functions/on-call-provider-application/index.ts',import.meta.url),'utf8').replace(/^import .*\n/gm,''));
 const base={first_name:'Synthetic',last_name:'QA',email:'qa@example.invalid',phone:'5550100000',city:'Atlanta',state:'GA',services_requested:['Cleaning'],years_experience:'0',has_vehicle:false,background_check_consent:true,license_attested:true,insurance_attested:true,terms_accepted:true};
-async function exercise({form=base,busy=false,failure=null}={}){
+async function exercise({form=base,busy=false,failure=null,insertError=null}={}){
  const seen={requests:0,inserts:[],steps:[],errors:[],busy:[],receipts:[],storage:[],warnings:[]};let handler;
- const chain={select:()=>chain,eq:()=>chain,in:()=>chain,order:()=>chain,limit:async()=>({data:[]}),insert:value=>{seen.inserts.push(value);return chain},single:async()=>({data:{id:'fixture',application_number:'QA-ONLY',status:'submitted'}})};
+ const chain={select:()=>chain,eq:()=>chain,in:()=>chain,order:()=>chain,limit:async()=>({data:[]}),insert:value=>{seen.inserts.push(value);return chain},single:async()=>({data:{id:'fixture',application_number:'QA-ONLY',status:'submitted'},error:insertError})};
  vm.runInNewContext(edge,{Request,Response,TextEncoder,Uint8Array,crypto:webcrypto,btoa,Deno:{env:{get:()=> 'fixture'},serve:fn=>handler=fn},createClient:()=>({from:()=>chain,rpc:async()=>({data:{allowed:true}})}),console:{error:()=>{}},fetch:()=>{throw Error('External network forbidden')}});
- const ctx={form,submitting:busy,Error,JSON,setReceiptWarning:v=>seen.warnings.push(v),setSubmitting:v=>seen.busy.push(v),setError:v=>seen.errors.push(v),setResult:v=>seen.result=v,setStep:v=>seen.steps.push(v),setReceipt:v=>seen.receipts.push(v),localStorage:{setItem:(k,v)=>{if(failure==='storage')throw Error('fixture storage failure');seen.storage.push([k,JSON.parse(v)])}},fetch:async(url,init)=>{seen.requests++;assert.equal(url,'https://cxdqkjvtpilvouwtbgdy.supabase.co/functions/v1/on-call-provider-application');seen.payload=JSON.parse(init.body);if(failure==='network')throw Error('fixture network failure');if(failure==='nonsuccess')return new Response(JSON.stringify({success:false,error:'fixture refusal'}));return handler(new Request(url,init));}};
+ const ctx={form,submitting:busy,Error,JSON,setReceiptWarning:v=>seen.warnings.push(v),setSubmitting:v=>seen.busy.push(v),setError:v=>seen.errors.push(v),setResult:v=>seen.result=v,setStep:v=>seen.steps.push(v),setReceipt:v=>seen.receipts.push(v),localStorage:{setItem:(k,v)=>{if(failure==='storage')throw Error('fixture storage failure');seen.storage.push([k,JSON.parse(v)])}},fetch:async(url,init)=>{seen.requests++;assert.equal(url,'https://cxdqkjvtpilvouwtbgdy.supabase.co/functions/v1/on-call-provider-application');seen.payload=JSON.parse(init.body);if(failure==='network')throw Error('fixture network failure');if(failure==='nonsuccess')return new Response(JSON.stringify({success:false,error:'fixture refusal'}));const response=await handler(new Request(url,init));seen.responseStatus=response.status;seen.responseBody=await response.clone().json();return response;}};
  await vm.runInNewContext(`const APPLICATION_ENDPOINT=${endpoint};const RECEIPT_KEY=${receiptKey};${submit};submit();`,ctx);
  return seen;
 }
@@ -27,3 +27,14 @@ test('busy snapshot prevents submit',async()=>{const r=await exercise({busy:true
 for(const failure of ['network','nonsuccess'])test(`${failure} does not advance or save receipt`,async()=>{const r=await exercise({failure});assert.deepEqual(r.steps,[]);assert.equal(r.storage.length,0);assert.equal(r.inserts.length,0);assert.match(r.errors.at(-1),/fixture/);assert.equal(r.busy.at(-1),false)});
 
 test('storage failure preserves successful application and in-memory receipt',async()=>{const r=await exercise({failure:'storage'});assert.equal(r.inserts.length,1);assert.deepEqual(r.steps,[4]);assert.equal(r.receipts.length,1);assert.ok(r.receipts[0].tracking_token.length>=30);assert.match(r.warnings.at(-1),/could not save/);assert.equal(r.errors.at(-1),'');assert.equal(r.busy.at(-1),false)});
+
+// Database failures are injected into the actual handler, then consumed by the actual caller.
+for (const [label,insertError,expected] of [
+ ['active email conflict',{code:'23505',message:'duplicate key value violates unique constraint "oc_provider_applications_active_email_unique"'},/private receipt.*Do not submit/],
+ ['different unique conflict',{code:'23505',message:'duplicate key value violates unique constraint "oc_provider_applications_application_number_key"'},/could not be processed/],
+ ['wrong error code',{code:'XX000',message:'duplicate key value violates unique constraint "oc_provider_applications_active_email_unique"'},/could not be processed/],
+ ['database outage',{code:'08006',message:'synthetic database unavailable'},/could not be processed/]
+]) test(`${label} preserves form without false receipt or automatic retry`,async()=>{
+ const r=await exercise({insertError});
+ assert.equal(r.requests,1);assert.equal(r.inserts.length,1);assert.deepEqual(r.steps,[]);assert.deepEqual(r.receipts,[]);assert.deepEqual(r.storage,[]);assert.match(r.errors.at(-1),expected);assert.equal(r.busy.at(-1),false);assert.equal(r.responseStatus,label==='active email conflict'?409:500);assert.equal(r.responseBody.tracking_token,undefined);assert.equal(r.responseBody.status_token_hash,undefined);assert.notEqual(r.responseBody.success,true);
+});
