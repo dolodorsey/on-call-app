@@ -6,8 +6,19 @@ The partial unique index covers lower(trim(email)) only for submitted, reviewing
 
 Prior isolated PostgreSQL 17.11 evidence: overlapping normalized inserts leave one application, one alert, one service match and seven verification checks; conflicting reopen preserves all related records. Actual production review RPC (MD5 02fc08c7574c2e598e54a00cfc916dc3) exercised with this index: conflicting reviewing/approved preserves five-table snapshot including notifications; successful local approval exercises notification creation. Authorization and user/notification fixture stubs limit proof; this is not certification of human operator authority or delivery.
 
-Evidence reports in the operating workspace: outputs/oncall-verification-side-effects-2026-10-13.md and outputs/oncall-operator-rpc-qa-2026-10-25.md. Reproduction scripts remain in work/oncall-verification-qa and work/oncall-operator-rpc-qa; these are local workspace dependencies, not a standalone repository test suite.
+Evidence reports in the operating workspace: outputs/oncall-verification-side-effects-2026-10-13.md and outputs/oncall-operator-rpc-qa-2026-10-25.md. The standalone check-concurrency.py and check-review.py scripts now reproduce these checks with the included schema snapshot and review function.
 
 Run the six current-handler email checks: node tests/provider-email-boundary.test.mjs. They mock persistence and forbid external network access. No real application is created.
 
 Fresh October 26 read: zero null emails, blank emails and active normalized duplicate groups. Recheck at deployment; this snapshot does not authorize deployment. Existing owner, GHL identity and independent QA/release holds remain.
+
+## Reproduce database checks
+
+Requires Python 3 and PostgreSQL 17 binaries (initdb, pg_ctl, psql) on PATH. Optionally set ONCALL_PG_BIN to their directory. Run as a non-root user:
+
+    python3 supabase/review/oncall-active-email/check-concurrency.py
+    python3 supabase/review/oncall-active-email/check-review.py
+
+Each script creates a disposable Unix-socket-only cluster under /tmp, strips inherited PG environment variables and tears down the cluster in finally. It does not connect to an existing database. It prints JSON evidence and does not modify the repository. No credentials or network service are needed. The concurrency script checks seven scenarios; the review script checks six. Run from any working directory. The schema snapshot includes definitions only, no production rows or credentials. fixture.sql excludes the proposed index; both scripts load proposed.sql separately so they test the reviewable proposal.
+
+The snapshot preserves the earlier limited fixture: auth/category parents and operator/user/notification dependencies are stubs. Real RLS/grants, unrelated indexes, external consumers and accepted human authority are not reproduced. These tests do not grant release approval or deploy the proposal.
