@@ -26,10 +26,10 @@ with tempfile.TemporaryDirectory(prefix='oncall-verification-',dir='/tmp') as d:
  def snapshot():return sql("select json_build_array((select json_agg(t order by id) from oc_provider_applications t),(select json_agg(t order by id) from marketplace_operator_alerts t),(select json_agg(t order by application_id,service_id) from oc_application_service_matches t),(select json_agg(t order by application_id,check_type) from oc_provider_verification_checks t));")
  started=False;checks=[]
  try:
-  run(['initdb','-D',d+'/data','-A','trust','--no-locale']);run(['pg_ctl','-D',d+'/data','-l',d+'/log','-o',f"-c listen_addresses='' -k {d} -p 55459",'start']);started=True
+  run(['initdb','-D',d+'/data','-A','trust','--no-locale','--encoding=UTF8']);run(['pg_ctl','-D',d+'/data','-l',d+'/log','-o',f"-c listen_addresses='' -k {d} -p 55459",'start']);started=True
   sql(ddl)
   sql("insert into oc_service_categories values('fixture');insert into oc_service_catalog(id,category_id,name,base_price,requires_license,requires_insurance) values('fixture-service','fixture','fixture-service',0,true,true);")
-  for email in ["''","'   '","E'\\t'","E'\\r\\n'","E' \\t\\n '"]:
+  for email in ["''","'   '","E'\\t'","E'\\r\\n'","E' \\t\\n '", "chr(65279)", "chr(65279)||chr(9)", "chr(32)||chr(65279)||chr(10)"]:
    before=snapshot();rejected(insert(email),'oc_provider_applications_email_nonblank');assert snapshot()==before;checks.append('blank input rejected without four-table change: '+email)
   before=snapshot();rejected(insert('null'),'not-null');assert snapshot()==before;checks.append('existing NOT NULL preserved')
   sql(insert("' QA@example.invalid '"));assert sql('select count(*) from oc_provider_applications;')=='1';assert sql('select count(*) from marketplace_operator_alerts;')=='1';assert sql('select count(*) from oc_provider_verification_checks;')=='7';assert sql('select count(*) from oc_application_service_matches;')=='1';checks.append('nonblank mixed-case spaced address preserved with actual trigger outputs')
