@@ -1,0 +1,651 @@
+{
+  "columns": [
+    {
+      "name": "id",
+      "type": "uuid",
+      "table": "marketplace_operator_alerts",
+      "default": "gen_random_uuid()",
+      "notnull": true
+    },
+    {
+      "name": "product_key",
+      "type": "text",
+      "table": "marketplace_operator_alerts",
+      "default": null,
+      "notnull": true
+    },
+    {
+      "name": "alert_type",
+      "type": "text",
+      "table": "marketplace_operator_alerts",
+      "default": null,
+      "notnull": true
+    },
+    {
+      "name": "entity_id",
+      "type": "uuid",
+      "table": "marketplace_operator_alerts",
+      "default": null,
+      "notnull": false
+    },
+    {
+      "name": "title",
+      "type": "text",
+      "table": "marketplace_operator_alerts",
+      "default": null,
+      "notnull": true
+    },
+    {
+      "name": "body",
+      "type": "text",
+      "table": "marketplace_operator_alerts",
+      "default": null,
+      "notnull": false
+    },
+    {
+      "name": "metadata",
+      "type": "jsonb",
+      "table": "marketplace_operator_alerts",
+      "default": "'{}'::jsonb",
+      "notnull": true
+    },
+    {
+      "name": "created_at",
+      "type": "timestamp with time zone",
+      "table": "marketplace_operator_alerts",
+      "default": "now()",
+      "notnull": true
+    },
+    {
+      "name": "application_id",
+      "type": "uuid",
+      "table": "oc_application_service_matches",
+      "default": null,
+      "notnull": true
+    },
+    {
+      "name": "service_id",
+      "type": "text",
+      "table": "oc_application_service_matches",
+      "default": null,
+      "notnull": true
+    },
+    {
+      "name": "match_method",
+      "type": "text",
+      "table": "oc_application_service_matches",
+      "default": null,
+      "notnull": true
+    },
+    {
+      "name": "approved",
+      "type": "boolean",
+      "table": "oc_application_service_matches",
+      "default": "false",
+      "notnull": true
+    },
+    {
+      "name": "reviewed_by",
+      "type": "uuid",
+      "table": "oc_application_service_matches",
+      "default": null,
+      "notnull": false
+    },
+    {
+      "name": "reviewed_at",
+      "type": "timestamp with time zone",
+      "table": "oc_application_service_matches",
+      "default": null,
+      "notnull": false
+    },
+    {
+      "name": "created_at",
+      "type": "timestamp with time zone",
+      "table": "oc_application_service_matches",
+      "default": "now()",
+      "notnull": true
+    },
+    {
+      "name": "id",
+      "type": "uuid",
+      "table": "oc_provider_applications",
+      "default": "gen_random_uuid()",
+      "notnull": true
+    },
+    {
+      "name": "application_number",
+      "type": "text",
+      "table": "oc_provider_applications",
+      "default": "((('OC-'::text || to_char(now(), 'YYYYMMDD'::text)) || '-'::text) || lpad((nextval('oc_provider_application_number_seq'::regclass))::text, 6, '0'::text))",
+      "notnull": true
+    },
+    {
+      "name": "first_name",
+      "type": "text",
+      "table": "oc_provider_applications",
+      "default": null,
+      "notnull": true
+    },
+    {
+      "name": "last_name",
+      "type": "text",
+      "table": "oc_provider_applications",
+      "default": null,
+      "notnull": true
+    },
+    {
+      "name": "email",
+      "type": "text",
+      "table": "oc_provider_applications",
+      "default": null,
+      "notnull": true
+    },
+    {
+      "name": "phone",
+      "type": "text",
+      "table": "oc_provider_applications",
+      "default": null,
+      "notnull": true
+    },
+    {
+      "name": "city",
+      "type": "text",
+      "table": "oc_provider_applications",
+      "default": null,
+      "notnull": true
+    },
+    {
+      "name": "state_code",
+      "type": "text",
+      "table": "oc_provider_applications",
+      "default": null,
+      "notnull": true
+    },
+    {
+      "name": "zip_code",
+      "type": "text",
+      "table": "oc_provider_applications",
+      "default": null,
+      "notnull": false
+    },
+    {
+      "name": "services_requested",
+      "type": "text[]",
+      "table": "oc_provider_applications",
+      "default": null,
+      "notnull": true
+    },
+    {
+      "name": "years_experience",
+      "type": "integer",
+      "table": "oc_provider_applications",
+      "default": null,
+      "notnull": true
+    },
+    {
+      "name": "experience_description",
+      "type": "text",
+      "table": "oc_provider_applications",
+      "default": null,
+      "notnull": false
+    },
+    {
+      "name": "has_vehicle",
+      "type": "boolean",
+      "table": "oc_provider_applications",
+      "default": "false",
+      "notnull": true
+    },
+    {
+      "name": "vehicle_type",
+      "type": "text",
+      "table": "oc_provider_applications",
+      "default": null,
+      "notnull": false
+    },
+    {
+      "name": "background_check_consent",
+      "type": "boolean",
+      "table": "oc_provider_applications",
+      "default": null,
+      "notnull": true
+    },
+    {
+      "name": "status",
+      "type": "text",
+      "table": "oc_provider_applications",
+      "default": "'submitted'::text",
+      "notnull": true
+    },
+    {
+      "name": "source_ip_hash",
+      "type": "text",
+      "table": "oc_provider_applications",
+      "default": null,
+      "notnull": false
+    },
+    {
+      "name": "created_at",
+      "type": "timestamp with time zone",
+      "table": "oc_provider_applications",
+      "default": "now()",
+      "notnull": true
+    },
+    {
+      "name": "updated_at",
+      "type": "timestamp with time zone",
+      "table": "oc_provider_applications",
+      "default": "now()",
+      "notnull": true
+    },
+    {
+      "name": "reviewed_at",
+      "type": "timestamp with time zone",
+      "table": "oc_provider_applications",
+      "default": null,
+      "notnull": false
+    },
+    {
+      "name": "reviewed_by",
+      "type": "uuid",
+      "table": "oc_provider_applications",
+      "default": null,
+      "notnull": false
+    },
+    {
+      "name": "review_notes",
+      "type": "text",
+      "table": "oc_provider_applications",
+      "default": null,
+      "notnull": false
+    },
+    {
+      "name": "license_attested",
+      "type": "boolean",
+      "table": "oc_provider_applications",
+      "default": "false",
+      "notnull": true
+    },
+    {
+      "name": "insurance_attested",
+      "type": "boolean",
+      "table": "oc_provider_applications",
+      "default": "false",
+      "notnull": true
+    },
+    {
+      "name": "terms_accepted",
+      "type": "boolean",
+      "table": "oc_provider_applications",
+      "default": "false",
+      "notnull": true
+    },
+    {
+      "name": "certifications",
+      "type": "text",
+      "table": "oc_provider_applications",
+      "default": null,
+      "notnull": false
+    },
+    {
+      "name": "license_details",
+      "type": "text",
+      "table": "oc_provider_applications",
+      "default": null,
+      "notnull": false
+    },
+    {
+      "name": "insurance_details",
+      "type": "text",
+      "table": "oc_provider_applications",
+      "default": null,
+      "notnull": false
+    },
+    {
+      "name": "status_token_hash",
+      "type": "text",
+      "table": "oc_provider_applications",
+      "default": null,
+      "notnull": false
+    },
+    {
+      "name": "application_id",
+      "type": "uuid",
+      "table": "oc_provider_verification_checks",
+      "default": null,
+      "notnull": true
+    },
+    {
+      "name": "check_type",
+      "type": "text",
+      "table": "oc_provider_verification_checks",
+      "default": null,
+      "notnull": true
+    },
+    {
+      "name": "required",
+      "type": "boolean",
+      "table": "oc_provider_verification_checks",
+      "default": "true",
+      "notnull": true
+    },
+    {
+      "name": "status",
+      "type": "text",
+      "table": "oc_provider_verification_checks",
+      "default": "'pending'::text",
+      "notnull": true
+    },
+    {
+      "name": "evidence_urls",
+      "type": "text[]",
+      "table": "oc_provider_verification_checks",
+      "default": "'{}'::text[]",
+      "notnull": true
+    },
+    {
+      "name": "expires_at",
+      "type": "timestamp with time zone",
+      "table": "oc_provider_verification_checks",
+      "default": null,
+      "notnull": false
+    },
+    {
+      "name": "reviewed_by",
+      "type": "uuid",
+      "table": "oc_provider_verification_checks",
+      "default": null,
+      "notnull": false
+    },
+    {
+      "name": "reviewed_at",
+      "type": "timestamp with time zone",
+      "table": "oc_provider_verification_checks",
+      "default": null,
+      "notnull": false
+    },
+    {
+      "name": "notes",
+      "type": "text",
+      "table": "oc_provider_verification_checks",
+      "default": null,
+      "notnull": false
+    },
+    {
+      "name": "created_at",
+      "type": "timestamp with time zone",
+      "table": "oc_provider_verification_checks",
+      "default": "now()",
+      "notnull": true
+    },
+    {
+      "name": "updated_at",
+      "type": "timestamp with time zone",
+      "table": "oc_provider_verification_checks",
+      "default": "now()",
+      "notnull": true
+    },
+    {
+      "name": "id",
+      "type": "text",
+      "table": "oc_service_catalog",
+      "default": null,
+      "notnull": true
+    },
+    {
+      "name": "category_id",
+      "type": "text",
+      "table": "oc_service_catalog",
+      "default": null,
+      "notnull": true
+    },
+    {
+      "name": "name",
+      "type": "text",
+      "table": "oc_service_catalog",
+      "default": null,
+      "notnull": true
+    },
+    {
+      "name": "description",
+      "type": "text",
+      "table": "oc_service_catalog",
+      "default": null,
+      "notnull": false
+    },
+    {
+      "name": "base_price",
+      "type": "numeric(10,2)",
+      "table": "oc_service_catalog",
+      "default": null,
+      "notnull": true
+    },
+    {
+      "name": "pricing_unit",
+      "type": "text",
+      "table": "oc_service_catalog",
+      "default": "'starting'::text",
+      "notnull": true
+    },
+    {
+      "name": "duration_minutes",
+      "type": "integer",
+      "table": "oc_service_catalog",
+      "default": null,
+      "notnull": false
+    },
+    {
+      "name": "on_demand_available",
+      "type": "boolean",
+      "table": "oc_service_catalog",
+      "default": "false",
+      "notnull": true
+    },
+    {
+      "name": "scheduled_available",
+      "type": "boolean",
+      "table": "oc_service_catalog",
+      "default": "true",
+      "notnull": true
+    },
+    {
+      "name": "recurring_available",
+      "type": "boolean",
+      "table": "oc_service_catalog",
+      "default": "false",
+      "notnull": true
+    },
+    {
+      "name": "icon_key",
+      "type": "text",
+      "table": "oc_service_catalog",
+      "default": null,
+      "notnull": false
+    },
+    {
+      "name": "image_url",
+      "type": "text",
+      "table": "oc_service_catalog",
+      "default": null,
+      "notnull": false
+    },
+    {
+      "name": "tags",
+      "type": "text[]",
+      "table": "oc_service_catalog",
+      "default": "'{}'::text[]",
+      "notnull": true
+    },
+    {
+      "name": "sort_order",
+      "type": "integer",
+      "table": "oc_service_catalog",
+      "default": "0",
+      "notnull": true
+    },
+    {
+      "name": "is_active",
+      "type": "boolean",
+      "table": "oc_service_catalog",
+      "default": "true",
+      "notnull": true
+    },
+    {
+      "name": "created_at",
+      "type": "timestamp with time zone",
+      "table": "oc_service_catalog",
+      "default": "now()",
+      "notnull": true
+    },
+    {
+      "name": "updated_at",
+      "type": "timestamp with time zone",
+      "table": "oc_service_catalog",
+      "default": "now()",
+      "notnull": true
+    },
+    {
+      "name": "requires_license",
+      "type": "boolean",
+      "table": "oc_service_catalog",
+      "default": "false",
+      "notnull": true
+    },
+    {
+      "name": "requires_insurance",
+      "type": "boolean",
+      "table": "oc_service_catalog",
+      "default": "false",
+      "notnull": true
+    }
+  ],
+  "routines": [
+    {
+      "name": "marketplace_emit_operator_alert",
+      "definition": "CREATE OR REPLACE FUNCTION private.marketplace_emit_operator_alert(p_product_key text, p_alert_type text, p_entity_id uuid, p_title text, p_body text, p_metadata jsonb DEFAULT '{}'::jsonb)\n RETURNS void\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO 'pg_catalog', 'public', 'private'\nAS $function$\nbegin\n  if p_product_key not in ('on_call','sos') then raise exception 'Invalid product key'; end if;\n  insert into public.marketplace_operator_alerts(product_key,alert_type,entity_id,title,body,metadata)\n  values(p_product_key,left(p_alert_type,80),p_entity_id,left(p_title,180),left(coalesce(p_body,''),1000),coalesce(p_metadata,'{}'::jsonb));\nend;$function$\n"
+    },
+    {
+      "name": "oc_initialize_application_verification",
+      "definition": "CREATE OR REPLACE FUNCTION private.oc_initialize_application_verification(p_application_id uuid)\n RETURNS void\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO 'pg_catalog', 'public', 'private'\nAS $function$\ndeclare v_app public.oc_provider_applications%rowtype; v_requires_license boolean:=false; v_requires_insurance boolean:=false;\nbegin\n  select * into v_app from public.oc_provider_applications where id=p_application_id;\n  if not found then return; end if;\n\n  insert into public.oc_application_service_matches(application_id,service_id,match_method)\n  select v_app.id,s.id,\n    case when exists(select 1 from unnest(v_app.services_requested) r where lower(trim(r))=lower(s.id)) then 'exact_id' else 'exact_name' end\n  from public.oc_service_catalog s\n  where s.is_active and exists(\n    select 1 from unnest(v_app.services_requested) r\n    where lower(regexp_replace(trim(r),'[^a-z0-9]+','','g')) in (\n      lower(regexp_replace(s.id,'[^a-z0-9]+','','g')),\n      lower(regexp_replace(s.name,'[^a-z0-9]+','','g'))\n    )\n  )\n  on conflict(application_id,service_id) do nothing;\n\n  select coalesce(bool_or(s.requires_license),false),coalesce(bool_or(s.requires_insurance),false)\n    into v_requires_license,v_requires_insurance\n  from public.oc_application_service_matches m join public.oc_service_catalog s on s.id=m.service_id\n  where m.application_id=v_app.id;\n\n  insert into public.oc_provider_verification_checks(application_id,check_type,required)\n  values\n    (v_app.id,'identity',true),\n    (v_app.id,'background',true),\n    (v_app.id,'skills',true),\n    (v_app.id,'service_area',true),\n    (v_app.id,'license',v_requires_license),\n    (v_app.id,'insurance',v_requires_insurance),\n    (v_app.id,'vehicle',v_app.has_vehicle)\n  on conflict(application_id,check_type) do update set required=excluded.required,updated_at=now();\nend;$function$\n"
+    },
+    {
+      "name": "oc_initialize_application_verification_trigger",
+      "definition": "CREATE OR REPLACE FUNCTION public.oc_initialize_application_verification_trigger()\n RETURNS trigger\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO 'pg_catalog', 'public', 'private'\nAS $function$\nbegin\n  perform private.oc_initialize_application_verification(new.id);\n  return new;\nend;$function$\n"
+    },
+    {
+      "name": "oc_provider_application_operator_alert_trigger",
+      "definition": "CREATE OR REPLACE FUNCTION public.oc_provider_application_operator_alert_trigger()\n RETURNS trigger\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO 'pg_catalog', 'public', 'private'\nAS $function$\nbegin\n if tg_op='INSERT' then\n   perform private.marketplace_emit_operator_alert('on_call','provider_application_submitted',new.id,'New ON CALL provider application',coalesce(new.first_name,'')||' '||coalesce(new.last_name,'')||' · '||coalesce(new.city,'')||', '||coalesce(new.state_code,''),jsonb_build_object('application_number',new.application_number,'status',new.status));\n elsif old.status is distinct from new.status then\n   perform private.marketplace_emit_operator_alert('on_call','provider_application_status',new.id,'ON CALL provider application updated',coalesce(new.application_number,'Application')||' → '||new.status,jsonb_build_object('application_number',new.application_number,'old_status',old.status,'new_status',new.status));\n end if;\n return new;\nend;$function$\n"
+    }
+  ],
+  "triggers": [
+    "CREATE TRIGGER oc_provider_application_operator_alert AFTER INSERT OR UPDATE OF status ON public.oc_provider_applications FOR EACH ROW EXECUTE FUNCTION oc_provider_application_operator_alert_trigger()",
+    "CREATE TRIGGER oc_provider_application_verification_init AFTER INSERT OR UPDATE OF services_requested, has_vehicle ON public.oc_provider_applications FOR EACH ROW EXECUTE FUNCTION oc_initialize_application_verification_trigger()"
+  ],
+  "constraints": [
+    {
+      "name": "oc_service_catalog_base_price_check",
+      "table": "oc_service_catalog",
+      "definition": "CHECK ((base_price >= (0)::numeric))"
+    },
+    {
+      "name": "oc_service_catalog_category_id_fkey",
+      "table": "oc_service_catalog",
+      "definition": "FOREIGN KEY (category_id) REFERENCES oc_service_categories(id)"
+    },
+    {
+      "name": "oc_service_catalog_name_key",
+      "table": "oc_service_catalog",
+      "definition": "UNIQUE (name)"
+    },
+    {
+      "name": "oc_service_catalog_pkey",
+      "table": "oc_service_catalog",
+      "definition": "PRIMARY KEY (id)"
+    },
+    {
+      "name": "oc_provider_applications_application_number_key",
+      "table": "oc_provider_applications",
+      "definition": "UNIQUE (application_number)"
+    },
+    {
+      "name": "oc_provider_applications_certifications_length",
+      "table": "oc_provider_applications",
+      "definition": "CHECK (((certifications IS NULL) OR (char_length(certifications) <= 2000)))"
+    },
+    {
+      "name": "oc_provider_applications_insurance_details_length",
+      "table": "oc_provider_applications",
+      "definition": "CHECK (((insurance_details IS NULL) OR (char_length(insurance_details) <= 2000)))"
+    },
+    {
+      "name": "oc_provider_applications_license_details_length",
+      "table": "oc_provider_applications",
+      "definition": "CHECK (((license_details IS NULL) OR (char_length(license_details) <= 2000)))"
+    },
+    {
+      "name": "oc_provider_applications_pkey",
+      "table": "oc_provider_applications",
+      "definition": "PRIMARY KEY (id)"
+    },
+    {
+      "name": "oc_provider_applications_reviewed_by_fkey",
+      "table": "oc_provider_applications",
+      "definition": "FOREIGN KEY (reviewed_by) REFERENCES auth.users(id) ON DELETE SET NULL"
+    },
+    {
+      "name": "oc_provider_applications_status_check",
+      "table": "oc_provider_applications",
+      "definition": "CHECK ((status = ANY (ARRAY['submitted'::text, 'reviewing'::text, 'approved'::text, 'rejected'::text, 'withdrawn'::text])))"
+    },
+    {
+      "name": "oc_application_service_matches_application_id_fkey",
+      "table": "oc_application_service_matches",
+      "definition": "FOREIGN KEY (application_id) REFERENCES oc_provider_applications(id) ON DELETE CASCADE"
+    },
+    {
+      "name": "oc_application_service_matches_match_method_check",
+      "table": "oc_application_service_matches",
+      "definition": "CHECK ((match_method = ANY (ARRAY['exact_id'::text, 'exact_name'::text, 'manual'::text])))"
+    },
+    {
+      "name": "oc_application_service_matches_pkey",
+      "table": "oc_application_service_matches",
+      "definition": "PRIMARY KEY (application_id, service_id)"
+    },
+    {
+      "name": "oc_application_service_matches_service_id_fkey",
+      "table": "oc_application_service_matches",
+      "definition": "FOREIGN KEY (service_id) REFERENCES oc_service_catalog(id) ON DELETE CASCADE"
+    },
+    {
+      "name": "oc_provider_verification_checks_application_id_fkey",
+      "table": "oc_provider_verification_checks",
+      "definition": "FOREIGN KEY (application_id) REFERENCES oc_provider_applications(id) ON DELETE CASCADE"
+    },
+    {
+      "name": "oc_provider_verification_checks_check_type_check",
+      "table": "oc_provider_verification_checks",
+      "definition": "CHECK ((check_type = ANY (ARRAY['identity'::text, 'background'::text, 'license'::text, 'insurance'::text, 'skills'::text, 'service_area'::text, 'vehicle'::text])))"
+    },
+    {
+      "name": "oc_provider_verification_checks_pkey",
+      "table": "oc_provider_verification_checks",
+      "definition": "PRIMARY KEY (application_id, check_type)"
+    },
+    {
+      "name": "oc_provider_verification_checks_status_check",
+      "table": "oc_provider_verification_checks",
+      "definition": "CHECK ((status = ANY (ARRAY['pending'::text, 'submitted'::text, 'under_review'::text, 'passed'::text, 'failed'::text, 'waived'::text, 'expired'::text])))"
+    },
+    {
+      "name": "marketplace_operator_alerts_pkey",
+      "table": "marketplace_operator_alerts",
+      "definition": "PRIMARY KEY (id)"
+    },
+    {
+      "name": "marketplace_operator_alerts_product_key_check",
+      "table": "marketplace_operator_alerts",
+      "definition": "CHECK ((product_key = ANY (ARRAY['on_call'::text, 'sos'::text])))"
+    }
+  ]
+}
