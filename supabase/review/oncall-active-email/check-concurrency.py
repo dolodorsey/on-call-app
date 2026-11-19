@@ -11,8 +11,9 @@ for fk in [False,True]:
  for c in s['constraints']:
   if c['definition'].startswith('FOREIGN KEY')==fk:ddl+=f'alter table public.{c["table"]} add constraint {c["name"]} {c["definition"]};'
 ddl+=';'.join(r['definition'] for r in s['routines'])+';'+ ';'.join(s['triggers'])+';'
-ddl+=(base/'proposed.sql').read_text()
-# Fixture remains immutable; the proposal is loaded separately.
+# Exercise the exact draft migration, including its duplicate preflight.
+ddl+=(base.parents[1]/'migrations/20261119115817_on_call_active_application_email_uniqueness.sql').read_text()
+# Fixture remains immutable; migration runs after all schema objects are loaded.
 with tempfile.TemporaryDirectory(prefix='oncall-verification-',dir='/tmp') as d:
  env={k:v for k,v in os.environ.items() if not k.startswith('PG')};env.update(PGHOST=d,PGPORT='55459',PGDATABASE='postgres',PATH=os.environ.get('ONCALL_PG_BIN','')+os.pathsep+os.environ['PATH'])
  def run(cmd,**kw):return subprocess.run(cmd,env=env,text=True,capture_output=True,timeout=20,check=True,**kw)

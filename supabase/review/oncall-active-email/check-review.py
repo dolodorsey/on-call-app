@@ -2,7 +2,7 @@ from pathlib import Path
 import json,re,subprocess,tempfile,os,hashlib
 base=Path(__file__).resolve().parent
 f=(base/'review-function.sql').read_text()
-ddl=(base/'fixture.sql').read_text()+(base/'proposed.sql').read_text()
+ddl=(base/'fixture.sql').read_text()+(base.parents[1]/'migrations/20261119115817_on_call_active_application_email_uniqueness.sql').read_text()
 ddl+='''
 create function auth.uid() returns uuid language sql as $$select nullif(current_setting('fixture.uid',true),'')::uuid$$;
 create function private.is_marketplace_operator(uuid) returns boolean language sql as $$select coalesce(current_setting('fixture.operator',true),'false')='true'$$;
