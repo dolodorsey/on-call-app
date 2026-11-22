@@ -11,8 +11,9 @@ for fk in [False,True]:
  for c in s['constraints']:
   if c['definition'].startswith('FOREIGN KEY')==fk:ddl+=f'alter table public.{c["table"]} add constraint {c["name"]} {c["definition"]};'
 ddl+=';'.join(r['definition'] for r in s['routines'])+';'+ ';'.join(s['triggers'])+';'
-ddl+=(base/'proposed.sql').read_text()
-ddl+=(Path(__file__).resolve().parent/'nonblank-proposed.sql').read_text()
+# Load the exact pending migrations that will accompany the existing draft PR.
+ddl+=(base.parents[1]/'migrations'/'20261119115817_on_call_active_application_email_uniqueness.sql').read_text()
+ddl+=(base.parents[1]/'migrations'/'20261122195500_on_call_application_email_nonblank.sql').read_text()
 # Fixture remains immutable; the proposal is loaded separately.
 with tempfile.TemporaryDirectory(prefix='oncall-verification-',dir='/tmp') as d:
  env={k:v for k,v in os.environ.items() if not k.startswith('PG')};env.update(PGHOST=d,PGPORT='55459',PGDATABASE='postgres',PATH=os.environ.get('ONCALL_PG_BIN','')+os.pathsep+os.environ['PATH'])
